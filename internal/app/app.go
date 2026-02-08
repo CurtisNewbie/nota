@@ -7,6 +7,7 @@ import (
 	"fyne.io/fyne/v2/storage"
 
 	"github.com/curtisnewbie/miso/flow"
+	"github.com/curtisnewbie/miso/util/atom"
 	"github.com/curtisnewbie/nota/internal/domain"
 	"github.com/curtisnewbie/nota/internal/infrastructure"
 	"github.com/curtisnewbie/nota/internal/repository"
@@ -197,10 +198,12 @@ func (a *App) onCreateNote() {
 func (a *App) createNewNote() {
 	rail := flow.EmptyRail()
 	newNote := &domain.Note{
-		Title:    "New Note",
-		Content:  "",
-		Version:  1,
-		Metadata: make(map[string]interface{}),
+		Title:     "New Note",
+		Content:   "",
+		Version:   1,
+		Metadata:  make(map[string]interface{}),
+		CreatedAt: atom.Now(),
+		UpdatedAt: atom.Now(),
 	}
 
 	err := a.noteService.CreateNote(rail, newNote)

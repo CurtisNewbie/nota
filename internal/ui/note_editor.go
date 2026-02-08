@@ -13,6 +13,7 @@ import (
 // NoteEditor represents the note editor/viewer panel
 type NoteEditor struct {
 	editHandler  NoteEditHandler
+	mainUI       *MainUI
 	note         *domain.Note
 	isEditMode   bool
 	isSaving     bool
@@ -21,6 +22,7 @@ type NoteEditor struct {
 	createdLabel *widget.Label
 	updatedLabel *widget.Label
 	statusLabel  *widget.Label
+	modeBtn      *widget.Button
 	container    *fyne.Container
 }
 
@@ -29,6 +31,11 @@ func NewNoteEditor(editHandler NoteEditHandler) *NoteEditor {
 	return &NoteEditor{
 		editHandler: editHandler,
 	}
+}
+
+// SetMainUI sets the main UI reference
+func (e *NoteEditor) SetMainUI(mainUI *MainUI) {
+	e.mainUI = mainUI
 }
 
 // Build builds the note editor UI
@@ -64,11 +71,11 @@ func (e *NoteEditor) Build() *fyne.Container {
 		}
 	})
 
-	modeBtn := widget.NewButton("Edit", func() {
+	e.modeBtn = widget.NewButton("Edit", func() {
 		e.toggleEditMode()
 	})
 
-	topBar := container.NewBorder(nil, nil, nil, container.NewHBox(modeBtn, saveBtn))
+	topBar := container.NewBorder(nil, nil, nil, container.NewHBox(e.modeBtn, saveBtn))
 
 	bottomBar := container.NewVBox(
 		widget.NewSeparator(),
@@ -172,10 +179,21 @@ func (e *NoteEditor) setEditMode(editMode bool) {
 	if editMode {
 		e.titleEntry.Enable()
 		e.contentEntry.Enable()
+		if e.modeBtn != nil {
+			e.modeBtn.SetText("View")
+		}
 	} else {
-		// Keep them enabled but read-only for better visibility
-		e.titleEntry.Enable()
-		e.contentEntry.Enable()
+		// Disable entries in view mode to make them read-only
+		e.titleEntry.Disable()
+		e.contentEntry.Disable()
+		if e.modeBtn != nil {
+			e.modeBtn.SetText("Edit")
+		}
+	}
+
+	// Notify MainUI of mode change
+	if e.mainUI != nil {
+		e.mainUI.SetEditMode(editMode)
 	}
 }
 
@@ -187,4 +205,9 @@ func (e *NoteEditor) EnableEdit() {
 // DisableEdit disables edit mode (read-only)
 func (e *NoteEditor) DisableEdit() {
 	e.setEditMode(false)
+}
+
+// IsEditMode returns whether currently in edit mode
+func (e *NoteEditor) IsEditMode() bool {
+	return e.isEditMode
 }
