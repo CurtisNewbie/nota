@@ -117,3 +117,13 @@ func (m *MainUI) MarkAsUnsaved() {
 func (m *MainUI) SetPinned(pinned bool) {
 	m.menuBar.SetPinned(pinned)
 }
+
+// StartSaving marks the start of a save operation
+func (m *MainUI) StartSaving() {
+	m.noteEditor.StartSaving()
+}
+
+// EndSaving marks the end of a save operation
+func (m *MainUI) EndSaving() {
+	m.noteEditor.EndSaving()
+}

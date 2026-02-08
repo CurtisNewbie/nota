@@ -1,19 +1,10 @@
 package ui
 
 import (
-
-	"fmt"
-
-
-
 	"fyne.io/fyne/v2"
-
 	"fyne.io/fyne/v2/container"
-
 	"fyne.io/fyne/v2/widget"
-
 	"github.com/curtisnewbie/nota/internal/domain"
-
 )
 
 // NoteList represents the note list panel
@@ -49,14 +40,25 @@ func (n *NoteList) Build() *fyne.Container {
 			return len(n.notes)
 		},
 		func() fyne.CanvasObject {
-			return widget.NewLabel("")
+			titleLabel := widget.NewLabel("")
+			titleLabel.TextStyle = fyne.TextStyle{Bold: true}
+			dateLabel := widget.NewLabel("")
+			dateLabel.TextStyle = fyne.TextStyle{Italic: true}
+			dateLabel.Importance = widget.LowImportance
+			return container.NewVBox(titleLabel, dateLabel)
 		},
 		func(id widget.ListItemID, obj fyne.CanvasObject) {
-			label := obj.(*widget.Label)
+			container := obj.(*fyne.Container)
 			if id >= 0 && id < len(n.notes) {
 				note := n.notes[id]
 				updatedTime := note.UpdatedAt.Format("2006/01/02")
-				label.SetText(fmt.Sprintf("%s\n%s", note.Title, updatedTime))
+				objects := container.Objects
+				if len(objects) >= 2 {
+					titleLabel := objects[0].(*widget.Label)
+					dateLabel := objects[1].(*widget.Label)
+					titleLabel.SetText(note.Title)
+					dateLabel.SetText(updatedTime)
+				}
 			}
 		},
 	)

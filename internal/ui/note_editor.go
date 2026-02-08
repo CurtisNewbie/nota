@@ -15,6 +15,7 @@ type NoteEditor struct {
 	editHandler    NoteEditHandler
 	note           *domain.Note
 	isEditMode     bool
+	isSaving       bool
 	titleEntry     *widget.Entry
 	contentEntry   *widget.Entry
 	createdLabel   *widget.Label
@@ -35,7 +36,7 @@ func (e *NoteEditor) Build() *fyne.Container {
 	e.titleEntry = widget.NewEntry()
 	e.titleEntry.SetPlaceHolder("Note Title")
 	e.titleEntry.OnChanged = func(string) {
-		if e.editHandler != nil {
+		if e.editHandler != nil && !e.isSaving {
 			e.editHandler.OnContentChanged()
 		}
 	}
@@ -43,7 +44,7 @@ func (e *NoteEditor) Build() *fyne.Container {
 	e.contentEntry = widget.NewMultiLineEntry()
 	e.contentEntry.SetPlaceHolder("Note content...")
 	e.contentEntry.OnChanged = func(string) {
-		if e.editHandler != nil {
+		if e.editHandler != nil && !e.isSaving {
 			e.editHandler.OnContentChanged()
 		}
 	}
@@ -59,7 +60,7 @@ func (e *NoteEditor) Build() *fyne.Container {
 	
 	saveBtn := widget.NewButtonWithIcon("Save", theme.DocumentSaveIcon(), func() {
 		if e.editHandler != nil {
-			e.editHandler.OnContentChanged()
+			e.editHandler.OnSave()
 		}
 	})
 	
@@ -69,15 +70,22 @@ func (e *NoteEditor) Build() *fyne.Container {
 	
 	topBar := container.NewBorder(nil, nil, nil, container.NewHBox(modeBtn, saveBtn))
 	
-	leftPanel := container.NewVBox(
-		topBar,
-		widget.NewSeparator(),
-		e.titleEntry,
-		widget.NewSeparator(),
-		e.contentEntry,
+	bottomBar := container.NewVBox(
 		widget.NewSeparator(),
 		container.NewHBox(e.createdLabel, e.updatedLabel),
 		e.statusLabel,
+	)
+	
+	leftPanel := container.NewBorder(
+		topBar,
+		bottomBar,
+		nil,
+		nil,
+		container.NewVBox(
+			e.titleEntry,
+			widget.NewSeparator(),
+			e.contentEntry,
+		),
 	)
 	
 	e.container = container.NewBorder(nil, nil, nil, nil, leftPanel)
@@ -130,6 +138,16 @@ func (e *NoteEditor) MarkAsSaved() {
 func (e *NoteEditor) MarkAsUnsaved() {
 	e.statusLabel.SetText("Unsaved changes")
 	e.statusLabel.Importance = widget.HighImportance
+}
+
+// StartSaving marks the start of a save operation
+func (e *NoteEditor) StartSaving() {
+	e.isSaving = true
+}
+
+// EndSaving marks the end of a save operation
+func (e *NoteEditor) EndSaving() {
+	e.isSaving = false
 }
 
 // ShowEmptyState shows the empty state

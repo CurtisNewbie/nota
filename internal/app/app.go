@@ -70,6 +70,9 @@ func NewApp() (*App, error) {
 	
 	window.SetContent(mainUI.Build())
 	
+	// Refresh the note list on startup
+	mainUI.RefreshNoteList()
+	
 	err = appInstance.loadLastNote()
 	if err != nil {
 		rail.Infof("No existing notes, ready to create new note")
@@ -110,6 +113,8 @@ func (a *App) loadLastNote() error {
 	if err != nil {
 		return err
 	}
+	a.mainUI.StartSaving()
+	defer a.mainUI.EndSaving()
 	a.currentNote = note
 	a.mainUI.DisplayNote(note)
 	return nil
@@ -120,6 +125,9 @@ func (a *App) saveCurrentNote() {
 	if a.currentNote == nil {
 		return
 	}
+	
+	a.mainUI.StartSaving()
+	defer a.mainUI.EndSaving()
 	
 	a.currentNote.Title = a.mainUI.GetTitle()
 	a.currentNote.Content = a.mainUI.GetContent()
@@ -143,6 +151,8 @@ func (a *App) onNoteSelected(note *domain.Note) {
 				if save {
 					a.saveCurrentNote()
 				}
+				a.mainUI.StartSaving()
+				defer a.mainUI.EndSaving()
 				a.currentNote = note
 				a.hasUnsavedChanges = false
 				a.mainUI.DisplayNote(note)
@@ -150,6 +160,8 @@ func (a *App) onNoteSelected(note *domain.Note) {
 			a.window,
 		)
 	} else {
+		a.mainUI.StartSaving()
+		defer a.mainUI.EndSaving()
 		a.currentNote = note
 		a.hasUnsavedChanges = false
 		a.mainUI.DisplayNote(note)
@@ -195,6 +207,8 @@ func (a *App) createNewNote() {
 		return
 	}
 	
+	a.mainUI.StartSaving()
+	defer a.mainUI.EndSaving()
 	a.currentNote = newNote
 	a.hasUnsavedChanges = false
 	a.mainUI.DisplayNote(newNote)
@@ -341,6 +355,11 @@ func (a *App) OnNoteSelected(note *domain.Note) {
 // OnContentChanged implements NoteEditHandler interface
 func (a *App) OnContentChanged() {
 	a.onContentChanged()
+}
+
+// OnSave implements NoteEditHandler interface
+func (a *App) OnSave() {
+	a.saveCurrentNote()
 }
 
 // OnCreateNote implements AppActionsHandler interface

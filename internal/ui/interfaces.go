@@ -12,6 +12,7 @@ type NoteSelectionHandler interface {
 // NoteEditHandler handles note edit events
 type NoteEditHandler interface {
 	OnContentChanged()
+	OnSave()
 }
 
 // AppActionsHandler handles application action events
@@ -22,6 +23,7 @@ type AppActionsHandler interface {
 	OnExportNote()
 	OnNoteSelected(note *domain.Note)
 	OnContentChanged()
+	OnSave()
 	OnSearch(query string)
 	OnPinNote(pin bool)
 	GetDatabaseLocation() string
