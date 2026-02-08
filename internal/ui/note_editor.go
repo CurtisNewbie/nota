@@ -42,6 +42,7 @@ func (e *NoteEditor) Build() *fyne.Container {
 
 	e.contentEntry = widget.NewMultiLineEntry()
 	e.contentEntry.SetPlaceHolder("Note content...")
+	e.contentEntry.SetMinRowsVisible(20) // Increase default visible rows
 	e.contentEntry.OnChanged = func(string) {
 		if e.editHandler != nil && !e.isSaving {
 			e.editHandler.OnContentChanged()
