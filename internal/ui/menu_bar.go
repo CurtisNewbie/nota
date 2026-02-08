@@ -34,6 +34,10 @@ func (m *MenuBar) SetWindow(window fyne.Window) {
 
 // Build builds the menu bar UI
 func (m *MenuBar) Build() *fyne.Container {
+	noteBtn := widget.NewButton("Note", func() {
+		m.showNoteMenu()
+	})
+
 	fileBtn := widget.NewButton("File", func() {
 		m.showFileMenu()
 	})
@@ -46,6 +50,7 @@ func (m *MenuBar) Build() *fyne.Container {
 	dbLabel.TextStyle = fyne.TextStyle{Italic: true}
 
 	m.container = container.NewHBox(
+		noteBtn,
 		fileBtn,
 		viewBtn,
 		widget.NewSeparator(),
@@ -55,8 +60,8 @@ func (m *MenuBar) Build() *fyne.Container {
 	return m.container
 }
 
-// showFileMenu shows the File dropdown menu
-func (m *MenuBar) showFileMenu() {
+// showNoteMenu shows the Note dropdown menu
+func (m *MenuBar) showNoteMenu() {
 	if m.window == nil {
 		return
 	}
@@ -65,6 +70,21 @@ func (m *MenuBar) showFileMenu() {
 		fyne.NewMenuItem("New Note", func() {
 			m.appActionsHandler.OnCreateNote()
 		}),
+	)
+
+	popUp := widget.NewPopUpMenu(menu, m.window.Canvas())
+	pos := m.menuButtonPosition(0)
+	popUp.Move(pos)
+	popUp.Show()
+}
+
+// showFileMenu shows the File dropdown menu
+func (m *MenuBar) showFileMenu() {
+	if m.window == nil {
+		return
+	}
+
+	menu := fyne.NewMenu("",
 		fyne.NewMenuItem("Import", func() {
 			m.appActionsHandler.OnImportNote()
 		}),
@@ -74,7 +94,7 @@ func (m *MenuBar) showFileMenu() {
 	)
 
 	popUp := widget.NewPopUpMenu(menu, m.window.Canvas())
-	pos := m.menuButtonPosition(0)
+	pos := m.menuButtonPosition(1)
 	popUp.Move(pos)
 	popUp.Show()
 }
@@ -91,7 +111,7 @@ func (m *MenuBar) showViewMenu() {
 	)
 
 	popUp := widget.NewPopUpMenu(menu, m.window.Canvas())
-	pos := m.menuButtonPosition(1)
+	pos := m.menuButtonPosition(2)
 	popUp.Move(pos)
 	popUp.Show()
 }
