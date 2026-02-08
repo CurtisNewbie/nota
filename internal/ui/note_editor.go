@@ -122,7 +122,8 @@ func (e *NoteEditor) DisplayNote(note *domain.Note) {
 	e.updatedLabel.SetText(fmt.Sprintf("Updated: %s", note.UpdatedAt.Format("2006/01/02 15:04")))
 	e.statusLabel.SetText("Saved")
 
-	e.setEditMode(false)
+	// Don't set edit mode here - let the caller control it
+	// e.setEditMode(false)
 }
 
 // GetTitle returns the current title
@@ -191,10 +192,8 @@ func (e *NoteEditor) setEditMode(editMode bool) {
 		}
 	}
 
-	// Notify MainUI of mode change
-	if e.mainUI != nil {
-		e.mainUI.SetEditMode(editMode)
-	}
+	// Don't call mainUI.SetEditMode here to avoid circular call
+	// MainUI.SetEditMode now calls EnableEdit/DisableEdit directly
 }
 
 // EnableEdit enables edit mode

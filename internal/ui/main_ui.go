@@ -138,4 +138,9 @@ func (m *MainUI) EndSaving() {
 // SetEditMode updates the edit mode in both editor and menu bar
 func (m *MainUI) SetEditMode(editMode bool) {
 	m.menuBar.SetEditMode(editMode)
+	if editMode {
+		m.noteEditor.EnableEdit()
+	} else {
+		m.noteEditor.DisableEdit()
+	}
 }

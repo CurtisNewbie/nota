@@ -118,6 +118,7 @@ func (a *App) loadLastNote() error {
 	defer a.mainUI.EndSaving()
 	a.currentNote = note
 	a.mainUI.DisplayNote(note)
+	a.mainUI.SetEditMode(false) // Existing notes load in view mode
 	return nil
 }
 
@@ -134,7 +135,17 @@ func (a *App) saveCurrentNote() {
 	a.currentNote.Title = a.mainUI.GetTitle()
 	a.currentNote.Content = a.mainUI.GetContent()
 
-	err := a.noteService.UpdateNote(rail, a.currentNote)
+	var err error
+	isNewNote := a.currentNote.ID == ""
+	
+	if isNewNote {
+		// Create new note in database
+		err = a.noteService.CreateNote(rail, a.currentNote)
+	} else {
+		// Update existing note
+		err = a.noteService.UpdateNote(rail, a.currentNote)
+	}
+	
 	if err != nil {
 		dialog.ShowError(err, a.window)
 		return
@@ -142,6 +153,11 @@ func (a *App) saveCurrentNote() {
 
 	a.hasUnsavedChanges = false
 	a.mainUI.MarkAsSaved()
+	
+	// Refresh note list if this was a new note
+	if isNewNote {
+		a.mainUI.RefreshNoteList()
+	}
 }
 
 // onNoteSelected is called when a note is selected from the list
@@ -158,6 +174,7 @@ func (a *App) onNoteSelected(note *domain.Note) {
 				a.currentNote = note
 				a.hasUnsavedChanges = false
 				a.mainUI.DisplayNote(note)
+				a.mainUI.SetEditMode(false) // Existing notes load in view mode
 			},
 			a.window,
 		)
@@ -167,6 +184,7 @@ func (a *App) onNoteSelected(note *domain.Note) {
 		a.currentNote = note
 		a.hasUnsavedChanges = false
 		a.mainUI.DisplayNote(note)
+		a.mainUI.SetEditMode(false) // Existing notes load in view mode
 	}
 }
 
@@ -194,9 +212,8 @@ func (a *App) onCreateNote() {
 	}
 }
 
-// createNewNote creates a new note
+// createNewNote creates a new note in memory (not saved to database yet)
 func (a *App) createNewNote() {
-	rail := flow.EmptyRail()
 	newNote := &domain.Note{
 		Title:     "New Note",
 		Content:   "",
@@ -206,18 +223,13 @@ func (a *App) createNewNote() {
 		UpdatedAt: atom.Now(),
 	}
 
-	err := a.noteService.CreateNote(rail, newNote)
-	if err != nil {
-		dialog.ShowError(err, a.window)
-		return
-	}
-
 	a.mainUI.StartSaving()
 	defer a.mainUI.EndSaving()
 	a.currentNote = newNote
-	a.hasUnsavedChanges = false
+	a.hasUnsavedChanges = true // Mark as unsaved since it's not in database yet
 	a.mainUI.DisplayNote(newNote)
-	a.mainUI.RefreshNoteList()
+	a.mainUI.MarkAsUnsaved()
+	a.mainUI.SetEditMode(true) // Always enable edit mode for new notes
 }
 
 // onDeleteNote is called when user wants to delete the current note
