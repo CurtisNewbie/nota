@@ -1,0 +1,374 @@
+package app
+
+import (
+	"context"
+	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/app"
+	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/storage"
+
+	"github.com/curtisnewbie/miso/flow"
+	"github.com/curtisnewbie/nota/internal/domain"
+	"github.com/curtisnewbie/nota/internal/infrastructure"
+	"github.com/curtisnewbie/nota/internal/repository"
+	"github.com/curtisnewbie/nota/internal/service"
+	"github.com/curtisnewbie/nota/internal/ui"
+)
+
+// App represents the main application
+type App struct {
+	fyneApp    fyne.App
+	window     fyne.Window
+	noteService service.NoteService
+	importExportService service.ImportExportService
+	mainUI     *ui.MainUI
+	currentNote *domain.Note
+	hasUnsavedChanges bool
+}
+
+// NewApp creates a new application instance
+func NewApp() (*App, error) {
+	rail := flow.NewRail(context.Background())
+	
+	rail.Infof("Initializing Nota application...")
+	
+	fyneApp := app.New()
+	fyneApp.Settings().SetTheme(&ui.MaterialTheme{})
+	
+	err := infrastructure.EnsureDatabaseDir()
+	if err != nil {
+		rail.Errorf("Failed to create database directory: %v", err)
+		return nil, err
+	}
+	
+	db, err := infrastructure.InitializeDatabase()
+	if err != nil {
+		rail.Errorf("Failed to initialize database: %v", err)
+		return nil, err
+	}
+	
+	noteRepo := repository.NewSQLiteNoteRepository(db)
+	noteService := service.NewNoteService(noteRepo)
+	importExportService := service.NewImportExportService(noteRepo)
+	
+	appInstance := &App{
+		fyneApp: fyneApp,
+		noteService: noteService,
+		importExportService: importExportService,
+	}
+	
+	window := fyneApp.NewWindow("Nota")
+	window.Resize(fyne.NewSize(1200, 800))
+	window.SetCloseIntercept(func() {
+		appInstance.onClose()
+	})
+	
+	appInstance.window = window
+	
+	mainUI := ui.NewMainUI(window, noteService, importExportService, appInstance)
+	appInstance.mainUI = mainUI
+	
+	window.SetContent(mainUI.Build())
+	
+	err = appInstance.loadLastNote()
+	if err != nil {
+		rail.Infof("No existing notes, ready to create new note")
+		mainUI.ShowEmptyState()
+	}
+	
+	rail.Infof("Application initialized successfully")
+	
+	return appInstance, nil
+}
+
+// Run starts the application
+func (a *App) Run() {
+	a.window.ShowAndRun()
+}
+
+// onClose handles window close event
+func (a *App) onClose() {
+	if a.hasUnsavedChanges {
+		dialog.ShowConfirm("Unsaved Changes", 
+			"You have unsaved changes. Do you want to save them before closing?",
+			func(save bool) {
+				if save {
+					a.saveCurrentNote()
+				}
+				a.fyneApp.Quit()
+			},
+			a.window,
+		)
+	} else {
+		a.fyneApp.Quit()
+	}
+}
+
+// loadLastNote loads the last modified note
+func (a *App) loadLastNote() error {
+	note, err := a.noteService.GetLastModifiedNote()
+	if err != nil {
+		return err
+	}
+	a.currentNote = note
+	a.mainUI.DisplayNote(note)
+	return nil
+}
+
+// saveCurrentNote saves the current note
+func (a *App) saveCurrentNote() {
+	if a.currentNote == nil {
+		return
+	}
+	
+	a.currentNote.Title = a.mainUI.GetTitle()
+	a.currentNote.Content = a.mainUI.GetContent()
+	
+	err := a.noteService.UpdateNote(a.currentNote)
+	if err != nil {
+		dialog.ShowError(err, a.window)
+		return
+	}
+	
+	a.hasUnsavedChanges = false
+	a.mainUI.MarkAsSaved()
+}
+
+// onNoteSelected is called when a note is selected from the list
+func (a *App) onNoteSelected(note *domain.Note) {
+	if a.hasUnsavedChanges {
+		dialog.ShowConfirm("Unsaved Changes", 
+			"You have unsaved changes. Do you want to save them before switching?",
+			func(save bool) {
+				if save {
+					a.saveCurrentNote()
+				}
+				a.currentNote = note
+				a.hasUnsavedChanges = false
+				a.mainUI.DisplayNote(note)
+			},
+			a.window,
+		)
+	} else {
+		a.currentNote = note
+		a.hasUnsavedChanges = false
+		a.mainUI.DisplayNote(note)
+	}
+}
+
+// onContentChanged is called when note content is modified
+func (a *App) onContentChanged() {
+	a.hasUnsavedChanges = true
+	a.mainUI.MarkAsUnsaved()
+}
+
+// onCreateNote is called when user wants to create a new note
+func (a *App) onCreateNote() {
+	if a.hasUnsavedChanges {
+		dialog.ShowConfirm("Unsaved Changes", 
+			"You have unsaved changes. Do you want to save them before creating a new note?",
+			func(save bool) {
+				if save {
+					a.saveCurrentNote()
+				}
+				a.createNewNote()
+			},
+			a.window,
+		)
+	} else {
+		a.createNewNote()
+	}
+}
+
+// createNewNote creates a new note
+func (a *App) createNewNote() {
+	newNote := &domain.Note{
+		Title:   "New Note",
+		Content: "",
+		Version: 1,
+		Metadata: make(map[string]interface{}),
+	}
+	
+	err := a.noteService.CreateNote(newNote)
+	if err != nil {
+		dialog.ShowError(err, a.window)
+		return
+	}
+	
+	a.currentNote = newNote
+	a.hasUnsavedChanges = false
+	a.mainUI.DisplayNote(newNote)
+	a.mainUI.RefreshNoteList()
+}
+
+// onDeleteNote is called when user wants to delete the current note
+func (a *App) onDeleteNote() {
+	if a.currentNote == nil {
+		return
+	}
+	
+	dialog.ShowConfirm("Delete Note", 
+		"Are you sure you want to delete this note?",
+		func(confirmed bool) {
+			if confirmed {
+				err := a.noteService.DeleteNote(a.currentNote.ID)
+				if err != nil {
+					dialog.ShowError(err, a.window)
+					return
+				}
+				
+				a.currentNote = nil
+				a.hasUnsavedChanges = false
+				a.mainUI.RefreshNoteList()
+				
+				lastNote, err := a.noteService.GetLastModifiedNote()
+				if err != nil {
+					a.mainUI.ShowEmptyState()
+				} else {
+					a.currentNote = lastNote
+					a.mainUI.DisplayNote(lastNote)
+				}
+			}
+		},
+		a.window,
+	)
+}
+
+// onImportNote is called when user wants to import a note
+func (a *App) onImportNote() {
+	fd := dialog.NewFileOpen(func(reader fyne.URIReadCloser, err error) {
+		if err != nil || reader == nil {
+			return
+		}
+		defer reader.Close()
+		
+		path := reader.URI().Path()
+		
+		dialog.ShowConfirm("Duplicate Note", 
+			"If a note with the same ID exists, do you want to overwrite it?",
+			func(overwrite bool) {
+				_, err := a.importExportService.ImportNote(path, func(note *domain.Note) bool {
+					return overwrite
+				})
+				if err != nil {
+					dialog.ShowError(err, a.window)
+					return
+				}
+				
+				a.mainUI.RefreshNoteList()
+				dialog.ShowInformation("Import Successful", "Note imported successfully", a.window)
+			},
+			a.window,
+		)
+	}, a.window)
+	
+	fd.SetFilter(storage.NewExtensionFileFilter([]string{".json"}))
+	fd.Show()
+}
+
+// onExportNote is called when user wants to export the current note
+func (a *App) onExportNote() {
+	if a.currentNote == nil {
+		dialog.ShowInformation("No Note Selected", "Please select a note to export", a.window)
+		return
+	}
+	
+	fd := dialog.NewFileSave(func(writer fyne.URIWriteCloser, err error) {
+		if err != nil || writer == nil {
+			return
+		}
+		defer writer.Close()
+		
+		path := writer.URI().Path()
+		err = a.importExportService.ExportNote(a.currentNote, path)
+		if err != nil {
+			dialog.ShowError(err, a.window)
+			return
+		}
+		
+		dialog.ShowInformation("Export Successful", "Note exported successfully", a.window)
+	}, a.window)
+	
+	fd.SetFileName("note_export.json")
+	fd.SetFilter(storage.NewExtensionFileFilter([]string{".json"}))
+	fd.Show()
+}
+
+// onSearch is called when user searches for notes
+func (a *App) onSearch(query string) {
+	if query == "" {
+		a.mainUI.RefreshNoteList()
+		return
+	}
+	
+	notes, err := a.noteService.SearchNotes(query)
+	if err != nil {
+		dialog.ShowError(err, a.window)
+		return
+	}
+	
+	a.mainUI.DisplaySearchResults(notes)
+}
+
+// onPinNote is called when user toggles pin mode
+func (a *App) onPinNote(pin bool) {
+	if a.currentNote == nil {
+		return
+	}
+	
+	if pin {
+		a.mainUI.SetPinned(true)
+	} else {
+		a.mainUI.SetPinned(false)
+	}
+}
+
+// GetDatabaseLocation returns the database location
+func (a *App) GetDatabaseLocation() string {
+	return infrastructure.GetDatabaseLocation()
+}
+
+// ListNotes returns all notes
+func (a *App) ListNotes() ([]*domain.Note, error) {
+	return a.noteService.ListNotes()
+}
+
+// OnNoteSelected implements NoteSelectionHandler interface
+func (a *App) OnNoteSelected(note *domain.Note) {
+	a.onNoteSelected(note)
+}
+
+// OnContentChanged implements NoteEditHandler interface
+func (a *App) OnContentChanged() {
+	a.onContentChanged()
+}
+
+// OnCreateNote implements AppActionsHandler interface
+func (a *App) OnCreateNote() {
+	a.onCreateNote()
+}
+
+// OnDeleteNote implements AppActionsHandler interface
+func (a *App) OnDeleteNote() {
+	a.onDeleteNote()
+}
+
+// OnImportNote implements AppActionsHandler interface
+func (a *App) OnImportNote() {
+	a.onImportNote()
+}
+
+// OnExportNote implements AppActionsHandler interface
+func (a *App) OnExportNote() {
+	a.onExportNote()
+}
+
+// OnSearch implements SearchHandler interface
+func (a *App) OnSearch(query string) {
+	a.onSearch(query)
+}
+
+// OnPinNote implements PinHandler interface
+func (a *App) OnPinNote(pin bool) {
+	a.onPinNote(pin)
+}

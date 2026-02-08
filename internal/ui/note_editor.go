@@ -1,0 +1,171 @@
+package ui
+
+import (
+	"fmt"
+
+	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/theme"
+	"fyne.io/fyne/v2/widget"
+	"github.com/curtisnewbie/nota/internal/domain"
+)
+
+// NoteEditor represents the note editor/viewer panel
+type NoteEditor struct {
+	editHandler    NoteEditHandler
+	note           *domain.Note
+	isEditMode     bool
+	titleEntry     *widget.Entry
+	contentEntry   *widget.Entry
+	createdLabel   *widget.Label
+	updatedLabel   *widget.Label
+	statusLabel    *widget.Label
+	container      *fyne.Container
+}
+
+// NewNoteEditor creates a new note editor
+func NewNoteEditor(editHandler NoteEditHandler) *NoteEditor {
+	return &NoteEditor{
+		editHandler: editHandler,
+	}
+}
+
+// Build builds the note editor UI
+func (e *NoteEditor) Build() *fyne.Container {
+	e.titleEntry = widget.NewEntry()
+	e.titleEntry.SetPlaceHolder("Note Title")
+	e.titleEntry.OnChanged = func(string) {
+		if e.editHandler != nil {
+			e.editHandler.OnContentChanged()
+		}
+	}
+	
+	e.contentEntry = widget.NewMultiLineEntry()
+	e.contentEntry.SetPlaceHolder("Note content...")
+	e.contentEntry.OnChanged = func(string) {
+		if e.editHandler != nil {
+			e.editHandler.OnContentChanged()
+		}
+	}
+	
+	e.createdLabel = widget.NewLabel("")
+	e.createdLabel.TextStyle = fyne.TextStyle{Italic: true}
+	
+	e.updatedLabel = widget.NewLabel("")
+	e.updatedLabel.TextStyle = fyne.TextStyle{Italic: true}
+	
+	e.statusLabel = widget.NewLabel("")
+	e.statusLabel.TextStyle = fyne.TextStyle{Bold: true}
+	
+	saveBtn := widget.NewButtonWithIcon("Save", theme.DocumentSaveIcon(), func() {
+		if e.editHandler != nil {
+			e.editHandler.OnContentChanged()
+		}
+	})
+	
+	modeBtn := widget.NewButton("Edit", func() {
+		e.toggleEditMode()
+	})
+	
+	topBar := container.NewBorder(nil, nil, nil, container.NewHBox(modeBtn, saveBtn))
+	
+	leftPanel := container.NewVBox(
+		topBar,
+		widget.NewSeparator(),
+		e.titleEntry,
+		widget.NewSeparator(),
+		e.contentEntry,
+		widget.NewSeparator(),
+		container.NewHBox(e.createdLabel, e.updatedLabel),
+		e.statusLabel,
+	)
+	
+	e.container = container.NewBorder(nil, nil, nil, nil, leftPanel)
+	
+	e.setEditMode(false)
+	
+	return e.container
+}
+
+// DisplayNote displays a note in the editor
+func (e *NoteEditor) DisplayNote(note *domain.Note) {
+	e.note = note
+	
+	if note == nil {
+		e.titleEntry.SetText("")
+		e.contentEntry.SetText("")
+		e.createdLabel.SetText("")
+		e.updatedLabel.SetText("")
+		e.statusLabel.SetText("No note selected")
+		e.setEditMode(false)
+		return
+	}
+	
+	e.titleEntry.SetText(note.Title)
+	e.contentEntry.SetText(note.Content)
+	e.createdLabel.SetText(fmt.Sprintf("Created: %s", note.CreatedAt.Format("2006/01/02 15:04")))
+	e.updatedLabel.SetText(fmt.Sprintf("Updated: %s", note.UpdatedAt.Format("2006/01/02 15:04")))
+	e.statusLabel.SetText("Saved")
+	
+	e.setEditMode(false)
+}
+
+// GetTitle returns the current title
+func (e *NoteEditor) GetTitle() string {
+	return e.titleEntry.Text
+}
+
+// GetContent returns the current content
+func (e *NoteEditor) GetContent() string {
+	return e.contentEntry.Text
+}
+
+// MarkAsSaved marks the note as saved
+func (e *NoteEditor) MarkAsSaved() {
+	e.statusLabel.SetText("Saved")
+	e.statusLabel.Importance = widget.LowImportance
+}
+
+// MarkAsUnsaved marks the note as unsaved
+func (e *NoteEditor) MarkAsUnsaved() {
+	e.statusLabel.SetText("Unsaved changes")
+	e.statusLabel.Importance = widget.HighImportance
+}
+
+// ShowEmptyState shows the empty state
+func (e *NoteEditor) ShowEmptyState() {
+	e.titleEntry.SetText("")
+	e.contentEntry.SetText("")
+	e.createdLabel.SetText("")
+	e.updatedLabel.SetText("")
+	e.statusLabel.SetText("No notes available. Click 'New Note' to create one.")
+	e.setEditMode(false)
+}
+
+// toggleEditMode toggles between edit and read mode
+func (e *NoteEditor) toggleEditMode() {
+	e.setEditMode(!e.isEditMode)
+}
+
+// setEditMode sets the edit mode
+func (e *NoteEditor) setEditMode(editMode bool) {
+	e.isEditMode = editMode
+	
+	e.titleEntry.Disable()
+	e.contentEntry.Disable()
+	
+	if editMode {
+		e.titleEntry.Enable()
+		e.contentEntry.Enable()
+	}
+}
+
+// EnableEdit enables edit mode
+func (e *NoteEditor) EnableEdit() {
+	e.setEditMode(true)
+}
+
+// DisableEdit disables edit mode (read-only)
+func (e *NoteEditor) DisableEdit() {
+	e.setEditMode(false)
+}
