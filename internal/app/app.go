@@ -118,6 +118,7 @@ func (a *App) loadLastNote() error {
 	defer a.mainUI.EndSaving()
 	a.currentNote = note
 	a.mainUI.DisplayNote(note)
+	a.mainUI.MarkAsSaved()
 	return nil
 }
 
@@ -158,7 +159,9 @@ func (a *App) saveCurrentNote() {
 	}
 
 	a.currentNote = latestNote
+	a.mainUI.StartSaving()
 	a.mainUI.DisplayNote(latestNote) // Update UI with latest note data
+	a.mainUI.EndSaving()
 	a.hasUnsavedChanges = false
 	a.mainUI.MarkAsSaved()
 	
@@ -189,6 +192,7 @@ func (a *App) onNoteSelected(note *domain.Note) {
 				a.currentNote = latestNote
 				a.hasUnsavedChanges = false
 				a.mainUI.DisplayNote(latestNote)
+				a.mainUI.MarkAsSaved()
 			},
 			a.window,
 		)
@@ -205,6 +209,7 @@ func (a *App) onNoteSelected(note *domain.Note) {
 		a.currentNote = latestNote
 		a.hasUnsavedChanges = false
 		a.mainUI.DisplayNote(latestNote)
+		a.mainUI.MarkAsSaved()
 	}
 }
 
@@ -274,10 +279,16 @@ func (a *App) onDeleteNote() {
 
 				lastNote, err := a.noteService.GetLastModifiedNote(rail)
 				if err != nil {
+					a.mainUI.StartSaving()
 					a.mainUI.ShowEmptyState()
+					a.mainUI.EndSaving()
+					a.mainUI.MarkAsSaved()
 				} else {
+					a.mainUI.StartSaving()
 					a.currentNote = lastNote
 					a.mainUI.DisplayNote(lastNote)
+					a.mainUI.EndSaving()
+					a.mainUI.MarkAsSaved()
 				}
 			}
 		},

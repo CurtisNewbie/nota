@@ -60,7 +60,7 @@ func (m *MainUI) Build() fyne.CanvasObject {
 	rightPanel := m.noteEditor.Build()
 
 	splitContainer := container.NewHSplit(leftPanel, rightPanel)
-	splitContainer.SetOffset(0.4)
+	splitContainer.SetOffset(0.18)
 
 	mainContainer := container.NewBorder(
 		menuBarContainer,
@@ -83,7 +83,7 @@ func (m *MainUI) setupRightClickHandler() {
 	if m.window == nil || m.noteList == nil {
 		return
 	}
-	
+
 	// Right-click handling will be implemented differently
 	// This is a placeholder for future implementation
 }

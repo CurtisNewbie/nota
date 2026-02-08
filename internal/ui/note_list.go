@@ -3,7 +3,6 @@ package ui
 import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/widget"
 	"github.com/curtisnewbie/nota/internal/domain"
 )
@@ -138,19 +137,9 @@ func (n *NoteList) ShowContextMenu(pos fyne.Position) {
 
 // onDeleteRequested handles the delete request from context menu
 func (n *NoteList) onDeleteRequested() {
-	if n.window == nil {
-		return
+	if n.deleteHandler != nil {
+		n.deleteHandler.OnDeleteNote()
 	}
-
-	dialog.ShowConfirm("Delete Note",
-		"Are you sure you want to delete this note?",
-		func(confirmed bool) {
-			if confirmed && n.deleteHandler != nil {
-				n.deleteHandler.OnDeleteNote()
-			}
-		},
-		n.window,
-	)
 }
 
 // DisplayNotes displays the list of notes
