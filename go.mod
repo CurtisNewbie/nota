@@ -4,8 +4,7 @@ go 1.24.7
 
 require (
 	fyne.io/fyne/v2 v2.7.2
-	github.com/curtisnewbie/miso v0.4.13-beta.2
-	gorm.io/driver/sqlite v1.6.0
+	github.com/curtisnewbie/miso v0.4.13-beta.2.0.20260208153247-94057d130dcb
 	gorm.io/gorm v1.31.1
 )
 
@@ -119,4 +118,5 @@ require (
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
+	gorm.io/driver/sqlite v1.6.0 // indirect
 )

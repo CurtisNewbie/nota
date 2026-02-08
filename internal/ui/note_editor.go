@@ -12,16 +12,16 @@ import (
 
 // NoteEditor represents the note editor/viewer panel
 type NoteEditor struct {
-	editHandler    NoteEditHandler
-	note           *domain.Note
-	isEditMode     bool
-	isSaving       bool
-	titleEntry     *widget.Entry
-	contentEntry   *widget.Entry
-	createdLabel   *widget.Label
-	updatedLabel   *widget.Label
-	statusLabel    *widget.Label
-	container      *fyne.Container
+	editHandler  NoteEditHandler
+	note         *domain.Note
+	isEditMode   bool
+	isSaving     bool
+	titleEntry   *widget.Entry
+	contentEntry *widget.Entry
+	createdLabel *widget.Label
+	updatedLabel *widget.Label
+	statusLabel  *widget.Label
+	container    *fyne.Container
 }
 
 // NewNoteEditor creates a new note editor
@@ -40,7 +40,7 @@ func (e *NoteEditor) Build() *fyne.Container {
 			e.editHandler.OnContentChanged()
 		}
 	}
-	
+
 	e.contentEntry = widget.NewMultiLineEntry()
 	e.contentEntry.SetPlaceHolder("Note content...")
 	e.contentEntry.OnChanged = func(string) {
@@ -48,34 +48,34 @@ func (e *NoteEditor) Build() *fyne.Container {
 			e.editHandler.OnContentChanged()
 		}
 	}
-	
+
 	e.createdLabel = widget.NewLabel("")
 	e.createdLabel.TextStyle = fyne.TextStyle{Italic: true}
-	
+
 	e.updatedLabel = widget.NewLabel("")
 	e.updatedLabel.TextStyle = fyne.TextStyle{Italic: true}
-	
+
 	e.statusLabel = widget.NewLabel("")
 	e.statusLabel.TextStyle = fyne.TextStyle{Bold: true}
-	
+
 	saveBtn := widget.NewButtonWithIcon("Save", theme.DocumentSaveIcon(), func() {
 		if e.editHandler != nil {
 			e.editHandler.OnSave()
 		}
 	})
-	
+
 	modeBtn := widget.NewButton("Edit", func() {
 		e.toggleEditMode()
 	})
-	
+
 	topBar := container.NewBorder(nil, nil, nil, container.NewHBox(modeBtn, saveBtn))
-	
+
 	bottomBar := container.NewVBox(
 		widget.NewSeparator(),
 		container.NewHBox(e.createdLabel, e.updatedLabel),
 		e.statusLabel,
 	)
-	
+
 	leftPanel := container.NewBorder(
 		topBar,
 		bottomBar,
@@ -87,18 +87,18 @@ func (e *NoteEditor) Build() *fyne.Container {
 			e.contentEntry,
 		),
 	)
-	
+
 	e.container = container.NewBorder(nil, nil, nil, nil, leftPanel)
-	
+
 	e.setEditMode(false)
-	
+
 	return e.container
 }
 
 // DisplayNote displays a note in the editor
 func (e *NoteEditor) DisplayNote(note *domain.Note) {
 	e.note = note
-	
+
 	if note == nil {
 		e.titleEntry.SetText("")
 		e.contentEntry.SetText("")
@@ -108,13 +108,13 @@ func (e *NoteEditor) DisplayNote(note *domain.Note) {
 		e.setEditMode(false)
 		return
 	}
-	
+
 	e.titleEntry.SetText(note.Title)
 	e.contentEntry.SetText(note.Content)
 	e.createdLabel.SetText(fmt.Sprintf("Created: %s", note.CreatedAt.Format("2006/01/02 15:04")))
 	e.updatedLabel.SetText(fmt.Sprintf("Updated: %s", note.UpdatedAt.Format("2006/01/02 15:04")))
 	e.statusLabel.SetText("Saved")
-	
+
 	e.setEditMode(false)
 }
 
@@ -168,11 +168,12 @@ func (e *NoteEditor) toggleEditMode() {
 // setEditMode sets the edit mode
 func (e *NoteEditor) setEditMode(editMode bool) {
 	e.isEditMode = editMode
-	
-	e.titleEntry.Disable()
-	e.contentEntry.Disable()
-	
+
 	if editMode {
+		e.titleEntry.Enable()
+		e.contentEntry.Enable()
+	} else {
+		// Keep them enabled but read-only for better visibility
 		e.titleEntry.Enable()
 		e.contentEntry.Enable()
 	}

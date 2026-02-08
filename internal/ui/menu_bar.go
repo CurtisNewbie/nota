@@ -12,19 +12,19 @@ import (
 // MenuBar represents the top menu bar
 type MenuBar struct {
 	appActionsHandler AppActionsHandler
-	pinHandler       PinHandler
-	pinned           bool
-	databaseLocation string
-	container        *fyne.Container
-	pinBtn           *widget.Button
+	pinHandler        PinHandler
+	pinned            bool
+	databaseLocation  string
+	container         *fyne.Container
+	pinBtn            *widget.Button
 }
 
 // NewMenuBar creates a new menu bar
 func NewMenuBar(appActions AppActionsHandler, pinHandler PinHandler, dbLocation string) *MenuBar {
 	return &MenuBar{
 		appActionsHandler: appActions,
-		pinHandler:       pinHandler,
-		databaseLocation: dbLocation,
+		pinHandler:        pinHandler,
+		databaseLocation:  dbLocation,
 	}
 }
 
@@ -33,15 +33,15 @@ func (m *MenuBar) Build() *fyne.Container {
 	importBtn := widget.NewButton("Import", func() {
 		m.appActionsHandler.OnImportNote()
 	})
-	
+
 	exportBtn := widget.NewButton("Export", func() {
 		m.appActionsHandler.OnExportNote()
 	})
-	
+
 	createBtn := widget.NewButtonWithIcon("New Note", theme.DocumentCreateIcon(), func() {
 		m.appActionsHandler.OnCreateNote()
 	})
-	
+
 	m.pinBtn = widget.NewButtonWithIcon("Pin Mode", theme.InfoIcon(), func() {
 		m.pinned = !m.pinned
 		m.pinHandler.OnPinNote(m.pinned)
@@ -53,10 +53,10 @@ func (m *MenuBar) Build() *fyne.Container {
 			m.pinBtn.SetIcon(theme.InfoIcon())
 		}
 	})
-	
+
 	dbLabel := widget.NewLabel(fmt.Sprintf("DB: %s", m.databaseLocation))
 	dbLabel.TextStyle = fyne.TextStyle{Italic: true}
-	
+
 	m.container = container.NewHBox(
 		importBtn,
 		exportBtn,
@@ -66,7 +66,7 @@ func (m *MenuBar) Build() *fyne.Container {
 		widget.NewSeparator(),
 		dbLabel,
 	)
-	
+
 	return m.container
 }
 

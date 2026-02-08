@@ -77,13 +77,13 @@ func (n *Note) ToJSON() NoteJSON {
 // FromJSON creates Note from NoteJSON for import
 func FromJSON(json NoteJSON) (*Note, error) {
 	note := &Note{
-		ID:        json.ID,
-		Title:     json.Title,
-		Content:   json.Content,
-		Version:   json.Version,
-		Metadata:  json.Metadata,
+		ID:       json.ID,
+		Title:    json.Title,
+		Content:  json.Content,
+		Version:  json.Version,
+		Metadata: json.Metadata,
 	}
-	
+
 	if json.CreatedAt != "" {
 		if t, err := time.Parse(time.RFC3339, json.CreatedAt); err == nil {
 			note.CreatedAt = atom.WrapTime(t)
@@ -93,7 +93,7 @@ func FromJSON(json NoteJSON) (*Note, error) {
 	} else {
 		note.CreatedAt = atom.WrapTime(time.Now())
 	}
-	
+
 	if json.UpdatedAt != "" {
 		if t, err := time.Parse(time.RFC3339, json.UpdatedAt); err == nil {
 			note.UpdatedAt = atom.WrapTime(t)
@@ -103,14 +103,14 @@ func FromJSON(json NoteJSON) (*Note, error) {
 	} else {
 		note.UpdatedAt = atom.WrapTime(time.Now())
 	}
-	
+
 	if json.DeletedAt != nil && *json.DeletedAt != "" {
 		if t, err := time.Parse(time.RFC3339, *json.DeletedAt); err == nil {
 			deletedAt := atom.WrapTime(t)
 			note.DeletedAt = &deletedAt
 		}
 	}
-	
+
 	return note, nil
 }
 

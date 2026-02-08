@@ -34,7 +34,7 @@ func (n *NoteList) Build() *fyne.Container {
 			n.searchHandler.OnSearch(query)
 		}
 	}
-	
+
 	n.noteList = widget.NewList(
 		func() int {
 			return len(n.notes)
@@ -62,13 +62,13 @@ func (n *NoteList) Build() *fyne.Container {
 			}
 		},
 	)
-	
+
 	n.noteList.OnSelected = func(id widget.ListItemID) {
 		if id >= 0 && id < len(n.notes) && n.selectionHandler != nil {
 			n.selectionHandler.OnNoteSelected(n.notes[id])
 		}
 	}
-	
+
 	rightPanel := container.NewBorder(
 		n.searchEntry,
 		nil,
@@ -76,9 +76,9 @@ func (n *NoteList) Build() *fyne.Container {
 		nil,
 		n.noteList,
 	)
-	
+
 	n.container = container.NewBorder(nil, nil, nil, nil, rightPanel)
-	
+
 	return n.container
 }
 

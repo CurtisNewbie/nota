@@ -3,20 +3,23 @@ package repository
 import (
 	"time"
 
+	"github.com/curtisnewbie/miso/flow"
+	"github.com/curtisnewbie/miso/middleware/dbquery"
 	"github.com/curtisnewbie/miso/util/atom"
+	"github.com/curtisnewbie/miso/util/idutil"
 	"github.com/curtisnewbie/nota/internal/domain"
 	"gorm.io/gorm"
 )
 
 // NoteRepository defines the interface for note data operations
 type NoteRepository interface {
-	Save(note *domain.Note) error
-	FindByID(id string) (*domain.Note, error)
-	FindAll() ([]*domain.Note, error)
-	FindAllSorted() ([]*domain.Note, error)
-	Search(query string) ([]*domain.Note, error)
-	Delete(id string) error
-	FindByTitle(title string) (*domain.Note, error)
+	Save(rail flow.Rail, note *domain.Note) error
+	FindByID(rail flow.Rail, id string) (*domain.Note, error)
+	FindAll(rail flow.Rail) ([]*domain.Note, error)
+	FindAllSorted(rail flow.Rail) ([]*domain.Note, error)
+	Search(rail flow.Rail, query string) ([]*domain.Note, error)
+	Delete(rail flow.Rail, id string) error
+	FindByTitle(rail flow.Rail, title string) (*domain.Note, error)
 }
 
 // SQLiteNoteRepository implements NoteRepository for SQLite
@@ -29,73 +32,92 @@ func NewSQLiteNoteRepository(db *gorm.DB) NoteRepository {
 	return &SQLiteNoteRepository{db: db}
 }
 
-// Save saves a note (create or update)
-func (r *SQLiteNoteRepository) Save(note *domain.Note) error {
-	return r.db.Save(note).Error
+// Save saves or updates a note
+func (r *SQLiteNoteRepository) Save(rail flow.Rail, note *domain.Note) error {
+	if note.ID == "" {
+		note.ID = idutil.Id("note")
+		q := dbquery.NewQuery(rail, r.db).Table("note")
+		_, err := q.Create(note)
+		return err
+	}
+	// For updates, use Set to specify columns
+	q := dbquery.NewQuery(rail, r.db).Table("note").Where("id = ?", note.ID).Set("title", note.Title).Set("content", note.Content)
+	_, err := q.Update()
+	return err
 }
 
 // FindByID finds a note by ID
-func (r *SQLiteNoteRepository) FindByID(id string) (*domain.Note, error) {
+func (r *SQLiteNoteRepository) FindByID(rail flow.Rail, id string) (*domain.Note, error) {
+	rail.Debugf("Finding note by ID: %s", id)
 	var note domain.Note
-	err := r.db.Where("id = ?", id).First(&note).Error
+	q := dbquery.NewQuery(rail, r.db).Table("note").Where("id = ?", id)
+	_, err := q.Scan(&note)
 	if err != nil {
+		rail.Warnf("Note not found: %s", id)
 		return nil, err
 	}
 	return &note, nil
 }
 
 // FindAll finds all notes (excluding soft-deleted)
-func (r *SQLiteNoteRepository) FindAll() ([]*domain.Note, error) {
+func (r *SQLiteNoteRepository) FindAll(rail flow.Rail) ([]*domain.Note, error) {
+	rail.Debugf("Finding all notes")
 	var notes []*domain.Note
-	err := r.db.Where("deleted_at IS NULL").Find(&notes).Error
+	q := dbquery.NewQuery(rail, r.db).Table("note").Where("deleted_at IS NULL")
+	_, err := q.Scan(&notes)
+	rail.Debugf("Found %d notes", len(notes))
 	return notes, err
 }
 
 // FindAllSorted finds all notes sorted by updated_at DESC (excluding soft-deleted)
-func (r *SQLiteNoteRepository) FindAllSorted() ([]*domain.Note, error) {
+func (r *SQLiteNoteRepository) FindAllSorted(rail flow.Rail) ([]*domain.Note, error) {
+	rail.Debugf("Finding all notes sorted by updated_at")
 	var notes []*domain.Note
-	err := r.db.Where("deleted_at IS NULL").Order("updated_at DESC").Find(&notes).Error
+	q := dbquery.NewQuery(rail, r.db).Table("note").Where("deleted_at IS NULL").Order("updated_at DESC")
+	_, err := q.Scan(&notes)
+	rail.Debugf("Found %d notes", len(notes))
 	return notes, err
 }
 
-// Search searches notes by title and content using FTS5 or LIKE-based search
-func (r *SQLiteNoteRepository) Search(query string) ([]*domain.Note, error) {
+// Search searches notes by title and content using LIKE-based search
+func (r *SQLiteNoteRepository) Search(rail flow.Rail, query string) ([]*domain.Note, error) {
 	if query == "" {
-		return r.FindAllSorted()
+		return r.FindAllSorted(rail)
 	}
-	
+
+	rail.Debugf("Searching notes with query: %s", query)
 	var notes []*domain.Note
-	
-	// Try FTS5 search first
-	err := r.db.Raw(`
-		SELECT note.* FROM note
-		INNER JOIN note_fts ON note.rowid = note_fts.rowid
-		WHERE note_fts MATCH ? AND note.deleted_at IS NULL
-		ORDER BY note.updated_at DESC
-	`, query).Scan(&notes).Error
-	
-	// If FTS5 fails, fall back to LIKE-based search
-	if err != nil {
-		searchPattern := "%" + query + "%"
-		err = r.db.Where("deleted_at IS NULL AND (title LIKE ? OR content LIKE ?)", searchPattern, searchPattern).
-			Order("updated_at DESC").
-			Find(&notes).Error
-	}
-	
+	searchPattern := "%" + query + "%"
+	q := dbquery.NewQuery(rail, r.db).Table("note").
+		Where("deleted_at IS NULL AND (title LIKE ? OR content LIKE ?)", searchPattern, searchPattern).
+		Order("updated_at DESC")
+	_, err := q.Scan(&notes)
+	rail.Debugf("Found %d notes matching query", len(notes))
 	return notes, err
 }
 
 // Delete soft-deletes a note by setting deleted_at timestamp
-func (r *SQLiteNoteRepository) Delete(id string) error {
+func (r *SQLiteNoteRepository) Delete(rail flow.Rail, id string) error {
+	rail.Infof("Deleting note: %s", id)
 	now := atom.WrapTime(time.Now())
-	return r.db.Model(&domain.Note{}).Where("id = ?", id).Update("deleted_at", now).Error
+	q := dbquery.NewQuery(rail, r.db).Table("note").Where("id = ?", id).Set("deleted_at", now)
+	_, err := q.Update()
+	if err != nil {
+		rail.Errorf("Failed to delete note %s: %v", id, err)
+	} else {
+		rail.Infof("Successfully deleted note: %s", id)
+	}
+	return err
 }
 
 // FindByTitle finds a note by title
-func (r *SQLiteNoteRepository) FindByTitle(title string) (*domain.Note, error) {
+func (r *SQLiteNoteRepository) FindByTitle(rail flow.Rail, title string) (*domain.Note, error) {
+	rail.Debugf("Finding note by title: %s", title)
 	var note domain.Note
-	err := r.db.Where("title = ? AND deleted_at IS NULL", title).First(&note).Error
+	q := dbquery.NewQuery(rail, r.db).Table("note").Where("title = ? AND deleted_at IS NULL", title)
+	_, err := q.Scan(&note)
 	if err != nil {
+		rail.Warnf("Note not found with title: %s", title)
 		return nil, err
 	}
 	return &note, nil

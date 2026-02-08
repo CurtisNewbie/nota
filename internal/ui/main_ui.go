@@ -1,15 +1,18 @@
 package ui
 
 import (
+	"context"
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
+	"github.com/curtisnewbie/miso/flow"
 	"github.com/curtisnewbie/nota/internal/domain"
 )
 
 // NoteService defines the interface for note operations
 type NoteService interface {
-	ListNotes() ([]*domain.Note, error)
+	ListNotes(rail flow.Rail) ([]*domain.Note, error)
 }
 
 // ImportExportService defines the interface for import/export operations
@@ -17,12 +20,13 @@ type ImportExportService interface{}
 
 // MainUI represents the main UI
 type MainUI struct {
-	window fyne.Window
-	app    AppActionsHandler
-	menuBar *MenuBar
-	noteEditor *NoteEditor
-	noteList *NoteList
-	container *fyne.Container
+	window      fyne.Window
+	app         AppActionsHandler
+	menuBar     *MenuBar
+	noteEditor  *NoteEditor
+	noteList    *NoteList
+	container   *fyne.Container
+	noteService NoteService
 }
 
 // NewMainUI creates a new main UI
@@ -33,27 +37,28 @@ func NewMainUI(
 	app AppActionsHandler,
 ) *MainUI {
 	mainUI := &MainUI{
-		window: window,
-		app:    app,
+		window:      window,
+		app:         app,
+		noteService: noteService,
 	}
-	
+
 	mainUI.menuBar = NewMenuBar(app, app, app.GetDatabaseLocation())
 	mainUI.noteEditor = NewNoteEditor(app)
 	mainUI.noteList = NewNoteList(app, app)
-	
+
 	return mainUI
 }
 
 // Build builds the main UI
 func (m *MainUI) Build() fyne.CanvasObject {
 	menuBarContainer := m.menuBar.Build()
-	
+
 	leftPanel := m.noteEditor.Build()
 	rightPanel := m.noteList.Build()
-	
+
 	splitContainer := container.NewHSplit(leftPanel, rightPanel)
 	splitContainer.SetOffset(0.6)
-	
+
 	mainContainer := container.NewBorder(
 		menuBarContainer,
 		nil,
@@ -61,9 +66,9 @@ func (m *MainUI) Build() fyne.CanvasObject {
 		nil,
 		splitContainer,
 	)
-	
+
 	m.container = container.NewWithoutLayout(mainContainer)
-	
+
 	return mainContainer
 }
 
@@ -80,7 +85,7 @@ func (m *MainUI) ShowEmptyState() {
 
 // RefreshNoteList refreshes the note list
 func (m *MainUI) RefreshNoteList() {
-	notes, err := m.app.ListNotes()
+	notes, err := m.noteService.ListNotes(flow.NewRail(context.Background()))
 	if err != nil {
 		dialog.ShowError(err, m.window)
 		return

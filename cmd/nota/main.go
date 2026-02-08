@@ -11,6 +11,6 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to initialize application: %v", err)
 	}
-	
+
 	notaApp.Run()
 }
