@@ -6,6 +6,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/widget"
 	"github.com/curtisnewbie/miso/flow"
 	"github.com/curtisnewbie/nota/internal/domain"
 )
@@ -20,13 +21,17 @@ type ImportExportService interface{}
 
 // MainUI represents the main UI
 type MainUI struct {
-	window      fyne.Window
-	app         AppActionsHandler
-	menuBar     *MenuBar
-	noteEditor  *NoteEditor
-	noteList    *NoteList
-	container   *fyne.Container
-	noteService NoteService
+	window           fyne.Window
+	app              AppActionsHandler
+	menuBar          *MenuBar
+	noteEditor       *NoteEditor
+	noteList         *NoteList
+	container        *fyne.Container
+	noteService      NoteService
+	minimized        bool
+	menuBarContainer *fyne.Container
+	rightPanel       *fyne.Container
+	fullContainer    *fyne.Container
 }
 
 // NewMainUI creates a new main UI
@@ -54,28 +59,28 @@ func NewMainUI(
 
 // Build builds the main UI
 func (m *MainUI) Build() fyne.CanvasObject {
-	menuBarContainer := m.menuBar.Build()
+	m.menuBarContainer = m.menuBar.Build()
 
 	leftPanel := m.noteList.Build()
-	rightPanel := m.noteEditor.Build()
+	m.rightPanel = m.noteEditor.Build()
 
-	splitContainer := container.NewHSplit(leftPanel, rightPanel)
-	splitContainer.SetOffset(0.18)
+	splitContainer := container.NewHSplit(leftPanel, m.rightPanel)
+	splitContainer.SetOffset(0.13)
 
-	mainContainer := container.NewBorder(
-		menuBarContainer,
+	m.fullContainer = container.NewBorder(
+		m.menuBarContainer,
 		nil,
 		nil,
 		nil,
 		splitContainer,
 	)
 
-	m.container = container.NewWithoutLayout(mainContainer)
+	m.container = m.fullContainer
 
 	// Add right-click detection for the note list
 	m.setupRightClickHandler()
 
-	return mainContainer
+	return m.container
 }
 
 // setupRightClickHandler sets up right-click detection for the note list
@@ -147,4 +152,31 @@ func (m *MainUI) StartSaving() {
 // EndSaving marks the end of a save operation
 func (m *MainUI) EndSaving() {
 	m.noteEditor.EndSaving()
+}
+
+// ToggleMinimizedMode toggles between normal and minimized (notepad) mode
+func (m *MainUI) ToggleMinimizedMode(minimized bool) {
+	m.minimized = minimized
+
+	if minimized {
+		// Create minimal container with title, content, and exit button
+		exitBtn := widget.NewButton("Exit Minimized Mode", func() {
+			m.ToggleMinimizedMode(false)
+		})
+		exitBtn.Importance = widget.MediumImportance
+		
+		minimalContainer := container.NewVBox(
+			exitBtn,
+			m.noteEditor.titleEntry,
+			widget.NewSeparator(),
+			m.noteEditor.contentEntry,
+		)
+		m.container = minimalContainer
+	} else {
+		// Restore full container
+		m.container = m.fullContainer
+	}
+	
+	// Update window content
+	m.window.SetContent(m.container)
 }

@@ -381,10 +381,14 @@ func (a *App) onPinNote(pin bool) {
 		return
 	}
 
+	a.mainUI.SetPinned(pin)
+	a.mainUI.ToggleMinimizedMode(pin)
+
+	// Resize window for minimized mode
 	if pin {
-		a.mainUI.SetPinned(true)
+		a.window.Resize(fyne.NewSize(400, 300))
 	} else {
-		a.mainUI.SetPinned(false)
+		a.window.Resize(fyne.NewSize(1200, 800))
 	}
 }
 

@@ -105,7 +105,7 @@ func (m *MenuBar) showViewMenu() {
 	}
 
 	menu := fyne.NewMenu("",
-		fyne.NewMenuItem("Pin Mode", func() {
+		fyne.NewMenuItem("Minimized Mode", func() {
 			m.togglePinMode()
 		}),
 	)

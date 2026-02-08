@@ -12,15 +12,20 @@ import (
 
 // NoteEditor represents the note editor panel
 type NoteEditor struct {
-	editHandler  NoteEditHandler
-	note         *domain.Note
-	isSaving     bool
-	titleEntry   *widget.Entry
-	contentEntry *widget.Entry
-	createdLabel *widget.Label
-	updatedLabel *widget.Label
-	statusLabel  *widget.Label
-	container    *fyne.Container
+	editHandler   NoteEditHandler
+	note          *domain.Note
+	isSaving      bool
+	minimalMode   bool
+	titleEntry    *widget.Entry
+	contentEntry  *widget.Entry
+	createdLabel  *widget.Label
+	updatedLabel  *widget.Label
+	statusLabel   *widget.Label
+	saveBtn       *widget.Button
+	topBar        *fyne.Container
+	bottomBar     *fyne.Container
+	leftPanel     *fyne.Container
+	container     *fyne.Container
 }
 
 // NewNoteEditor creates a new note editor
@@ -58,23 +63,23 @@ func (e *NoteEditor) Build() *fyne.Container {
 	e.statusLabel = widget.NewLabel("")
 	e.statusLabel.TextStyle = fyne.TextStyle{Bold: true}
 
-	saveBtn := widget.NewButtonWithIcon("Save", theme.DocumentSaveIcon(), func() {
+	e.saveBtn = widget.NewButtonWithIcon("Save", theme.DocumentSaveIcon(), func() {
 		if e.editHandler != nil {
 			e.editHandler.OnSave()
 		}
 	})
 
-	topBar := container.NewBorder(nil, nil, nil, saveBtn)
+	e.topBar = container.NewBorder(nil, nil, nil, e.saveBtn)
 
-	bottomBar := container.NewVBox(
+	e.bottomBar = container.NewVBox(
 		widget.NewSeparator(),
 		container.NewHBox(e.createdLabel, e.updatedLabel),
 		e.statusLabel,
 	)
 
-	leftPanel := container.NewBorder(
-		topBar,
-		bottomBar,
+	e.leftPanel = container.NewBorder(
+		e.topBar,
+		e.bottomBar,
 		nil,
 		nil,
 		container.NewVBox(
@@ -84,7 +89,7 @@ func (e *NoteEditor) Build() *fyne.Container {
 		),
 	)
 
-	e.container = container.NewBorder(nil, nil, nil, nil, leftPanel)
+	e.container = container.NewBorder(nil, nil, nil, nil, e.leftPanel)
 
 	return e.container
 }
@@ -151,4 +156,9 @@ func (e *NoteEditor) ShowEmptyState() {
 	e.createdLabel.SetText("")
 	e.updatedLabel.SetText("")
 	e.statusLabel.SetText("No notes available. Click 'New Note' to create one.")
+}
+
+// SetMinimalMode toggles minimal mode (hides UI elements)
+func (e *NoteEditor) SetMinimalMode(minimal bool) {
+	e.minimalMode = minimal
 }
