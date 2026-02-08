@@ -45,7 +45,6 @@ func NewMainUI(
 	mainUI.menuBar = NewMenuBar(app, app, app.GetDatabaseLocation())
 	mainUI.menuBar.SetWindow(window)
 	mainUI.noteEditor = NewNoteEditor(app)
-	mainUI.noteEditor.SetMainUI(mainUI)
 	mainUI.noteList = NewNoteList(app, app)
 
 	return mainUI
@@ -133,14 +132,4 @@ func (m *MainUI) StartSaving() {
 // EndSaving marks the end of a save operation
 func (m *MainUI) EndSaving() {
 	m.noteEditor.EndSaving()
-}
-
-// SetEditMode updates the edit mode in both editor and menu bar
-func (m *MainUI) SetEditMode(editMode bool) {
-	m.menuBar.SetEditMode(editMode)
-	if editMode {
-		m.noteEditor.EnableEdit()
-	} else {
-		m.noteEditor.DisableEdit()
-	}
 }

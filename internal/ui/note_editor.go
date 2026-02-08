@@ -10,19 +10,16 @@ import (
 	"github.com/curtisnewbie/nota/internal/domain"
 )
 
-// NoteEditor represents the note editor/viewer panel
+// NoteEditor represents the note editor panel
 type NoteEditor struct {
 	editHandler  NoteEditHandler
-	mainUI       *MainUI
 	note         *domain.Note
-	isEditMode   bool
 	isSaving     bool
 	titleEntry   *widget.Entry
 	contentEntry *widget.Entry
 	createdLabel *widget.Label
 	updatedLabel *widget.Label
 	statusLabel  *widget.Label
-	modeBtn      *widget.Button
 	container    *fyne.Container
 }
 
@@ -31,11 +28,6 @@ func NewNoteEditor(editHandler NoteEditHandler) *NoteEditor {
 	return &NoteEditor{
 		editHandler: editHandler,
 	}
-}
-
-// SetMainUI sets the main UI reference
-func (e *NoteEditor) SetMainUI(mainUI *MainUI) {
-	e.mainUI = mainUI
 }
 
 // Build builds the note editor UI
@@ -71,11 +63,7 @@ func (e *NoteEditor) Build() *fyne.Container {
 		}
 	})
 
-	e.modeBtn = widget.NewButton("Edit", func() {
-		e.toggleEditMode()
-	})
-
-	topBar := container.NewBorder(nil, nil, nil, container.NewHBox(e.modeBtn, saveBtn))
+	topBar := container.NewBorder(nil, nil, nil, saveBtn)
 
 	bottomBar := container.NewVBox(
 		widget.NewSeparator(),
@@ -97,8 +85,6 @@ func (e *NoteEditor) Build() *fyne.Container {
 
 	e.container = container.NewBorder(nil, nil, nil, nil, leftPanel)
 
-	e.setEditMode(false)
-
 	return e.container
 }
 
@@ -112,7 +98,6 @@ func (e *NoteEditor) DisplayNote(note *domain.Note) {
 		e.createdLabel.SetText("")
 		e.updatedLabel.SetText("")
 		e.statusLabel.SetText("No note selected")
-		e.setEditMode(false)
 		return
 	}
 
@@ -165,48 +150,4 @@ func (e *NoteEditor) ShowEmptyState() {
 	e.createdLabel.SetText("")
 	e.updatedLabel.SetText("")
 	e.statusLabel.SetText("No notes available. Click 'New Note' to create one.")
-	e.setEditMode(false)
-}
-
-// toggleEditMode toggles between edit and read mode
-func (e *NoteEditor) toggleEditMode() {
-	e.setEditMode(!e.isEditMode)
-}
-
-// setEditMode sets the edit mode
-func (e *NoteEditor) setEditMode(editMode bool) {
-	e.isEditMode = editMode
-
-	if editMode {
-		e.titleEntry.Enable()
-		e.contentEntry.Enable()
-		if e.modeBtn != nil {
-			e.modeBtn.SetText("View")
-		}
-	} else {
-		// Disable entries in view mode to make them read-only
-		e.titleEntry.Disable()
-		e.contentEntry.Disable()
-		if e.modeBtn != nil {
-			e.modeBtn.SetText("Edit")
-		}
-	}
-
-	// Don't call mainUI.SetEditMode here to avoid circular call
-	// MainUI.SetEditMode now calls EnableEdit/DisableEdit directly
-}
-
-// EnableEdit enables edit mode
-func (e *NoteEditor) EnableEdit() {
-	e.setEditMode(true)
-}
-
-// DisableEdit disables edit mode (read-only)
-func (e *NoteEditor) DisableEdit() {
-	e.setEditMode(false)
-}
-
-// IsEditMode returns whether currently in edit mode
-func (e *NoteEditor) IsEditMode() bool {
-	return e.isEditMode
 }

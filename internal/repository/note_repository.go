@@ -41,7 +41,7 @@ func (r *SQLiteNoteRepository) Save(rail flow.Rail, note *domain.Note) error {
 		return err
 	}
 	// For updates, use Set to specify columns
-	q := dbquery.NewQuery(rail, r.db).Table("note").Where("id = ?", note.ID).Set("title", note.Title).Set("content", note.Content)
+	q := dbquery.NewQuery(rail, r.db).Table("note").Where("id = ?", note.ID).Set("title", note.Title).Set("content", note.Content).Set("updated_at", atom.Now())
 	_, err := q.Update()
 	return err
 }

@@ -118,7 +118,6 @@ func (a *App) loadLastNote() error {
 	defer a.mainUI.EndSaving()
 	a.currentNote = note
 	a.mainUI.DisplayNote(note)
-	a.mainUI.SetEditMode(false) // Existing notes load in view mode
 	return nil
 }
 
@@ -174,7 +173,6 @@ func (a *App) onNoteSelected(note *domain.Note) {
 				a.currentNote = note
 				a.hasUnsavedChanges = false
 				a.mainUI.DisplayNote(note)
-				a.mainUI.SetEditMode(false) // Existing notes load in view mode
 			},
 			a.window,
 		)
@@ -184,7 +182,6 @@ func (a *App) onNoteSelected(note *domain.Note) {
 		a.currentNote = note
 		a.hasUnsavedChanges = false
 		a.mainUI.DisplayNote(note)
-		a.mainUI.SetEditMode(false) // Existing notes load in view mode
 	}
 }
 
@@ -229,7 +226,6 @@ func (a *App) createNewNote() {
 	a.hasUnsavedChanges = true // Mark as unsaved since it's not in database yet
 	a.mainUI.DisplayNote(newNote)
 	a.mainUI.MarkAsUnsaved()
-	a.mainUI.SetEditMode(true) // Always enable edit mode for new notes
 }
 
 // onDeleteNote is called when user wants to delete the current note

@@ -16,8 +16,6 @@ type MenuBar struct {
 	databaseLocation  string
 	container         *fyne.Container
 	window            fyne.Window
-	editMode          bool
-	editBtn           *widget.Button
 }
 
 // NewMenuBar creates a new menu bar
@@ -26,7 +24,6 @@ func NewMenuBar(appActions AppActionsHandler, pinHandler PinHandler, dbLocation 
 		appActionsHandler: appActions,
 		pinHandler:        pinHandler,
 		databaseLocation:  dbLocation,
-		editMode:          false,
 	}
 }
 
@@ -41,11 +38,6 @@ func (m *MenuBar) Build() *fyne.Container {
 		m.showFileMenu()
 	})
 
-	editBtn := widget.NewButton("Edit Mode", func() {
-		m.showEditMenu()
-	})
-	m.editBtn = editBtn
-
 	viewBtn := widget.NewButton("View", func() {
 		m.showViewMenu()
 	})
@@ -55,7 +47,6 @@ func (m *MenuBar) Build() *fyne.Container {
 
 	m.container = container.NewHBox(
 		fileBtn,
-		editBtn,
 		viewBtn,
 		widget.NewSeparator(),
 		dbLabel,
@@ -69,10 +60,13 @@ func (m *MenuBar) showFileMenu() {
 	if m.window == nil {
 		return
 	}
-
+	
 	menu := fyne.NewMenu("",
 		fyne.NewMenuItem("New Note", func() {
 			m.appActionsHandler.OnCreateNote()
+		}),
+		fyne.NewMenuItem("Delete Note", func() {
+			m.appActionsHandler.OnDeleteNote()
 		}),
 		fyne.NewMenuItem("Import", func() {
 			m.appActionsHandler.OnImportNote()
@@ -81,31 +75,12 @@ func (m *MenuBar) showFileMenu() {
 			m.appActionsHandler.OnExportNote()
 		}),
 	)
-
+	
 	popUp := widget.NewPopUpMenu(menu, m.window.Canvas())
 	pos := m.menuButtonPosition(0)
 	popUp.Move(pos)
 	popUp.Show()
 }
-
-// showEditMenu shows the Edit dropdown menu
-func (m *MenuBar) showEditMenu() {
-	if m.window == nil {
-		return
-	}
-
-	menu := fyne.NewMenu("",
-		fyne.NewMenuItem("Delete Note", func() {
-			m.appActionsHandler.OnDeleteNote()
-		}),
-	)
-
-	popUp := widget.NewPopUpMenu(menu, m.window.Canvas())
-	pos := m.menuButtonPosition(1)
-	popUp.Move(pos)
-	popUp.Show()
-}
-
 // showViewMenu shows the View dropdown menu
 func (m *MenuBar) showViewMenu() {
 	if m.window == nil {
@@ -119,7 +94,7 @@ func (m *MenuBar) showViewMenu() {
 	)
 
 	popUp := widget.NewPopUpMenu(menu, m.window.Canvas())
-	pos := m.menuButtonPosition(2)
+	pos := m.menuButtonPosition(1)
 	popUp.Move(pos)
 	popUp.Show()
 }
@@ -146,16 +121,4 @@ func (m *MenuBar) togglePinMode() {
 // SetPinned updates the pin mode state
 func (m *MenuBar) SetPinned(pinned bool) {
 	m.pinned = pinned
-}
-
-// SetEditMode updates the edit mode state and updates the Edit Mode button text
-func (m *MenuBar) SetEditMode(editMode bool) {
-	m.editMode = editMode
-	if m.editBtn != nil {
-		if editMode {
-			m.editBtn.SetText("View Mode")
-		} else {
-			m.editBtn.SetText("Edit Mode")
-		}
-	}
 }
