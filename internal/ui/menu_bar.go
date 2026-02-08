@@ -60,13 +60,10 @@ func (m *MenuBar) showFileMenu() {
 	if m.window == nil {
 		return
 	}
-	
+
 	menu := fyne.NewMenu("",
 		fyne.NewMenuItem("New Note", func() {
 			m.appActionsHandler.OnCreateNote()
-		}),
-		fyne.NewMenuItem("Delete Note", func() {
-			m.appActionsHandler.OnDeleteNote()
 		}),
 		fyne.NewMenuItem("Import", func() {
 			m.appActionsHandler.OnImportNote()
@@ -75,7 +72,7 @@ func (m *MenuBar) showFileMenu() {
 			m.appActionsHandler.OnExportNote()
 		}),
 	)
-	
+
 	popUp := widget.NewPopUpMenu(menu, m.window.Canvas())
 	pos := m.menuButtonPosition(0)
 	popUp.Move(pos)
