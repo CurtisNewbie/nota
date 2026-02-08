@@ -3,18 +3,29 @@ package ui
 import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/widget"
 	"github.com/curtisnewbie/nota/internal/domain"
 )
+
+// DeleteHandler handles note deletion events
+type DeleteHandler interface {
+	OnDeleteNote()
+}
 
 // NoteList represents the note list panel
 type NoteList struct {
 	selectionHandler NoteSelectionHandler
 	searchHandler    SearchHandler
+	deleteHandler    DeleteHandler
+	window           fyne.Window
 	notes            []*domain.Note
 	searchEntry      *widget.Entry
 	noteList         *widget.List
+	rightPanel       *fyne.Container
 	container        *fyne.Container
+	menu             *fyne.Menu
+	popUpMenu        *widget.PopUpMenu
 }
 
 // NewNoteList creates a new note list
@@ -23,6 +34,16 @@ func NewNoteList(selectionHandler NoteSelectionHandler, searchHandler SearchHand
 		selectionHandler: selectionHandler,
 		searchHandler:    searchHandler,
 	}
+}
+
+// SetWindow sets the window for the note list (needed for dialogs)
+func (n *NoteList) SetWindow(window fyne.Window) {
+	n.window = window
+}
+
+// SetDeleteHandler sets the delete handler for the note list
+func (n *NoteList) SetDeleteHandler(handler DeleteHandler) {
+	n.deleteHandler = handler
 }
 
 // Build builds the note list UI
@@ -34,6 +55,22 @@ func (n *NoteList) Build() *fyne.Container {
 			n.searchHandler.OnSearch(query)
 		}
 	}
+
+	// Add delete button
+	deleteBtn := widget.NewButton("Delete", func() {
+		n.onDeleteRequested()
+	})
+	deleteBtn.Importance = widget.DangerImportance
+
+	// Create toolbar with search and delete
+	// Put search entry in center (expandable) and delete button on right edge
+	toolbar := container.NewBorder(
+		nil,
+		nil,
+		nil,
+		deleteBtn,
+		n.searchEntry,
+	)
 
 	n.noteList = widget.NewList(
 		func() int {
@@ -70,16 +107,50 @@ func (n *NoteList) Build() *fyne.Container {
 	}
 
 	rightPanel := container.NewBorder(
-		n.searchEntry,
+		toolbar,
 		nil,
 		nil,
 		nil,
 		n.noteList,
 	)
 
+	n.rightPanel = rightPanel
 	n.container = container.NewBorder(nil, nil, nil, nil, rightPanel)
 
 	return n.container
+}
+
+// ShowContextMenu shows the context menu at the given position
+func (n *NoteList) ShowContextMenu(pos fyne.Position) {
+	if n.window == nil {
+		return
+	}
+
+	// Create popup menu
+	deleteItem := fyne.NewMenuItem("Delete", func() {
+		n.onDeleteRequested()
+	})
+
+	menu := fyne.NewMenu("", deleteItem)
+	n.popUpMenu = widget.NewPopUpMenu(menu, n.window.Canvas())
+	n.popUpMenu.Move(pos)
+}
+
+// onDeleteRequested handles the delete request from context menu
+func (n *NoteList) onDeleteRequested() {
+	if n.window == nil {
+		return
+	}
+
+	dialog.ShowConfirm("Delete Note",
+		"Are you sure you want to delete this note?",
+		func(confirmed bool) {
+			if confirmed && n.deleteHandler != nil {
+				n.deleteHandler.OnDeleteNote()
+			}
+		},
+		n.window,
+	)
 }
 
 // DisplayNotes displays the list of notes

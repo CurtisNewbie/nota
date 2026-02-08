@@ -46,6 +46,8 @@ func NewMainUI(
 	mainUI.menuBar.SetWindow(window)
 	mainUI.noteEditor = NewNoteEditor(app)
 	mainUI.noteList = NewNoteList(app, app)
+	mainUI.noteList.SetWindow(window)
+	mainUI.noteList.SetDeleteHandler(app)
 
 	return mainUI
 }
@@ -70,7 +72,20 @@ func (m *MainUI) Build() fyne.CanvasObject {
 
 	m.container = container.NewWithoutLayout(mainContainer)
 
+	// Add right-click detection for the note list
+	m.setupRightClickHandler()
+
 	return mainContainer
+}
+
+// setupRightClickHandler sets up right-click detection for the note list
+func (m *MainUI) setupRightClickHandler() {
+	if m.window == nil || m.noteList == nil {
+		return
+	}
+	
+	// Right-click handling will be implemented differently
+	// This is a placeholder for future implementation
 }
 
 // DisplayNote displays a note
