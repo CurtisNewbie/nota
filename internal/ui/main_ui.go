@@ -56,11 +56,11 @@ func NewMainUI(
 func (m *MainUI) Build() fyne.CanvasObject {
 	menuBarContainer := m.menuBar.Build()
 
-	leftPanel := m.noteEditor.Build()
-	rightPanel := m.noteList.Build()
+	leftPanel := m.noteList.Build()
+	rightPanel := m.noteEditor.Build()
 
 	splitContainer := container.NewHSplit(leftPanel, rightPanel)
-	splitContainer.SetOffset(0.6)
+	splitContainer.SetOffset(0.4)
 
 	mainContainer := container.NewBorder(
 		menuBarContainer,
