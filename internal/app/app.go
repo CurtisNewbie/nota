@@ -150,6 +150,15 @@ func (a *App) saveCurrentNote() {
 		return
 	}
 
+	// Fetch latest note from database to get updated timestamps and other fields
+	latestNote, fetchErr := a.noteService.GetNote(rail, a.currentNote.ID)
+	if fetchErr != nil {
+		dialog.ShowError(fetchErr, a.window)
+		return
+	}
+
+	a.currentNote = latestNote
+	a.mainUI.DisplayNote(latestNote) // Update UI with latest note data
 	a.hasUnsavedChanges = false
 	a.mainUI.MarkAsSaved()
 	
@@ -168,20 +177,34 @@ func (a *App) onNoteSelected(note *domain.Note) {
 				if save {
 					a.saveCurrentNote()
 				}
+				// Fetch latest note from database
+				rail := flow.EmptyRail()
+				latestNote, err := a.noteService.GetNote(rail, note.ID)
+				if err != nil {
+					dialog.ShowError(err, a.window)
+					return
+				}
 				a.mainUI.StartSaving()
 				defer a.mainUI.EndSaving()
-				a.currentNote = note
+				a.currentNote = latestNote
 				a.hasUnsavedChanges = false
-				a.mainUI.DisplayNote(note)
+				a.mainUI.DisplayNote(latestNote)
 			},
 			a.window,
 		)
 	} else {
+		// Fetch latest note from database
+		rail := flow.EmptyRail()
+		latestNote, err := a.noteService.GetNote(rail, note.ID)
+		if err != nil {
+			dialog.ShowError(err, a.window)
+			return
+		}
 		a.mainUI.StartSaving()
 		defer a.mainUI.EndSaving()
-		a.currentNote = note
+		a.currentNote = latestNote
 		a.hasUnsavedChanges = false
-		a.mainUI.DisplayNote(note)
+		a.mainUI.DisplayNote(latestNote)
 	}
 }
 
