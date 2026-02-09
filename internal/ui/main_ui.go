@@ -159,6 +159,9 @@ func (m *MainUI) ToggleMinimizedMode(minimized bool) {
 	m.minimized = minimized
 
 	if minimized {
+		// Keep window on top in minimized mode
+		SetWindowOnTopByTitle(m.window.Title(), true)
+
 		// Create minimal container with title, content, and exit button
 		exitBtn := widget.NewButton("Exit Minimized Mode", func() {
 			m.ToggleMinimizedMode(false)
@@ -193,6 +196,8 @@ func (m *MainUI) ToggleMinimizedMode(minimized bool) {
 		m.noteEditor.SyncFromMinimizedMode()
 		// Restore full container
 		m.container = m.fullContainer
+		// Disable "stay on top" when exiting minimized mode
+		SetWindowOnTopByTitle(m.window.Title(), false)
 	}
 
 	// Update window content
