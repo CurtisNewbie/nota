@@ -178,6 +178,9 @@ func (m *MainUI) ToggleMinimizedMode(minimized bool) {
 		contentEntry.Wrapping = fyne.TextWrapWord
 		contentEntry.SetMinRowsVisible(20)
 
+		// Track the widgets so we can sync changes back when exiting
+		m.noteEditor.SetMinimizedWidgets(titleEntry, contentEntry)
+
 		minimalContainer := container.NewVBox(
 			exitBtn,
 			titleEntry,
@@ -186,6 +189,8 @@ func (m *MainUI) ToggleMinimizedMode(minimized bool) {
 		)
 		m.container = minimalContainer
 	} else {
+		// Sync changes from minimized mode widgets back to note editor
+		m.noteEditor.SyncFromMinimizedMode()
 		// Restore full container
 		m.container = m.fullContainer
 	}

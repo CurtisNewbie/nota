@@ -12,20 +12,22 @@ import (
 
 // NoteEditor represents the note editor panel
 type NoteEditor struct {
-	editHandler   NoteEditHandler
-	note          *domain.Note
-	isSaving      bool
-	minimalMode   bool
-	titleEntry    *widget.Entry
-	contentEntry  *widget.Entry
-	createdLabel  *widget.Label
-	updatedLabel  *widget.Label
-	statusLabel   *widget.Label
-	saveBtn       *widget.Button
-	topBar        *fyne.Container
-	bottomBar     *fyne.Container
-	leftPanel     *fyne.Container
-	container     *fyne.Container
+	editHandler           NoteEditHandler
+	note                  *domain.Note
+	isSaving              bool
+	minimalMode           bool
+	titleEntry            *widget.Entry
+	contentEntry          *widget.Entry
+	createdLabel          *widget.Label
+	updatedLabel          *widget.Label
+	statusLabel           *widget.Label
+	saveBtn               *widget.Button
+	topBar                *fyne.Container
+	bottomBar             *fyne.Container
+	leftPanel             *fyne.Container
+	container             *fyne.Container
+	minimizedTitleEntry   *widget.Entry
+	minimizedContentEntry *widget.Entry
 }
 
 // NewNoteEditor creates a new note editor
@@ -174,4 +176,37 @@ func (e *NoteEditor) ShowEmptyState() {
 // SetMinimalMode toggles minimal mode (hides UI elements)
 func (e *NoteEditor) SetMinimalMode(minimal bool) {
 	e.minimalMode = minimal
+}
+
+// SetMinimizedWidgets stores references to the minimized mode widgets
+func (e *NoteEditor) SetMinimizedWidgets(titleEntry *widget.Entry, contentEntry *widget.Entry) {
+	e.minimizedTitleEntry = titleEntry
+	e.minimizedContentEntry = contentEntry
+}
+
+// SyncFromMinimizedMode syncs changes from minimized mode widgets back to the main editor
+func (e *NoteEditor) SyncFromMinimizedMode() {
+	if e.minimizedTitleEntry != nil && e.minimizedContentEntry != nil {
+		// Get the current values from minimized widgets
+		newTitle := e.minimizedTitleEntry.Text
+		newContent := e.minimizedContentEntry.Text
+
+		// Get the current values from main editor
+		currentTitle := e.titleEntry.Text
+		currentContent := e.contentEntry.Text
+
+		// Only update and mark as unsaved if values actually changed
+		if newTitle != currentTitle || newContent != currentContent {
+			e.titleEntry.SetText(newTitle)
+			e.contentEntry.SetText(newContent)
+			// Mark as unsaved since content changed
+			if e.editHandler != nil {
+				e.editHandler.OnContentChanged()
+			}
+		}
+
+		// Clear references
+		e.minimizedTitleEntry = nil
+		e.minimizedContentEntry = nil
+	}
 }

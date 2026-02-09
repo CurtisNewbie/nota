@@ -98,6 +98,7 @@ func (m *MenuBar) showFileMenu() {
 	popUp.Move(pos)
 	popUp.Show()
 }
+
 // showViewMenu shows the View dropdown menu
 func (m *MenuBar) showViewMenu() {
 	if m.window == nil {
