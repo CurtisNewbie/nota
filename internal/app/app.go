@@ -4,6 +4,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/storage"
 
 	"github.com/curtisnewbie/miso/flow"
@@ -86,6 +87,16 @@ func NewApp() (*App, error) {
 
 // Run starts the application
 func (a *App) Run() {
+	// Add keyboard shortcut for saving (Cmd+S on macOS, Ctrl+S on Windows/Linux)
+	// Add before showing the window to ensure proper registration
+	canvas := a.window.Canvas()
+	canvas.AddShortcut(&desktop.CustomShortcut{
+		KeyName:  fyne.KeyS,
+		Modifier: fyne.KeyModifierShortcutDefault,
+	}, func(shortcut fyne.Shortcut) {
+		a.saveCurrentNote()
+	})
+
 	a.window.ShowAndRun()
 }
 

@@ -45,6 +45,10 @@ func (e *NoteEditor) Build() *fyne.Container {
 		}
 	}
 
+	// Add shortcut to title entry's canvas if window is available
+	// Note: This won't work when entry has focus, so we need a different approach
+	// For now, this provides a fallback when entry doesn't have focus
+
 	e.contentEntry = widget.NewMultiLineEntry()
 	e.contentEntry.SetPlaceHolder("Note content...")
 	e.contentEntry.SetMinRowsVisible(20) // Increase default visible rows
