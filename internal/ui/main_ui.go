@@ -162,14 +162,27 @@ func (m *MainUI) ToggleMinimizedMode(minimized bool) {
 		// Create minimal container with title, content, and exit button
 		exitBtn := widget.NewButton("Exit Minimized Mode", func() {
 			m.ToggleMinimizedMode(false)
+			m.SetPinned(false)
+			m.window.Resize(fyne.NewSize(1200, 800))
 		})
 		exitBtn.Importance = widget.MediumImportance
 
+		// Create fresh widget instances for minimized mode to avoid state conflicts
+		titleEntry := widget.NewEntry()
+		titleEntry.SetText(m.noteEditor.GetTitle())
+		titleEntry.PlaceHolder = "Note Title"
+
+		contentEntry := widget.NewMultiLineEntry()
+		contentEntry.SetText(m.noteEditor.GetContent())
+		contentEntry.SetPlaceHolder("Note Content")
+		contentEntry.Wrapping = fyne.TextWrapWord
+		contentEntry.SetMinRowsVisible(20)
+
 		minimalContainer := container.NewVBox(
 			exitBtn,
-			m.noteEditor.titleEntry,
+			titleEntry,
 			widget.NewSeparator(),
-			m.noteEditor.contentEntry,
+			contentEntry,
 		)
 		m.container = minimalContainer
 	} else {

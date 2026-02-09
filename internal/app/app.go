@@ -137,7 +137,7 @@ func (a *App) saveCurrentNote() {
 
 	var err error
 	isNewNote := a.currentNote.ID == ""
-	
+
 	if isNewNote {
 		// Create new note in database
 		err = a.noteService.CreateNote(rail, a.currentNote)
@@ -145,7 +145,7 @@ func (a *App) saveCurrentNote() {
 		// Update existing note
 		err = a.noteService.UpdateNote(rail, a.currentNote)
 	}
-	
+
 	if err != nil {
 		dialog.ShowError(err, a.window)
 		return
@@ -164,7 +164,7 @@ func (a *App) saveCurrentNote() {
 	a.mainUI.EndSaving()
 	a.hasUnsavedChanges = false
 	a.mainUI.MarkAsSaved()
-	
+
 	// Refresh note list if this was a new note
 	if isNewNote {
 		a.mainUI.RefreshNoteList()
