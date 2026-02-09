@@ -238,7 +238,7 @@ func (a *App) onCreateNote() {
 // createNewNote creates a new note in memory (not saved to database yet)
 func (a *App) createNewNote() {
 	newNote := &domain.Note{
-		Title:     "New Note",
+		Title:     "",
 		Content:   "",
 		Version:   1,
 		Metadata:  make(map[string]interface{}),
@@ -392,7 +392,7 @@ func (a *App) onPinNote(pin bool) {
 	if pin {
 		a.window.Resize(fyne.NewSize(400, 300))
 	} else {
-		a.window.Resize(fyne.NewSize(1200, 800))
+		a.window.Resize(fyne.NewSize(1000, 800))
 	}
 }
 

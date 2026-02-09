@@ -65,7 +65,7 @@ func (m *MainUI) Build() fyne.CanvasObject {
 	m.rightPanel = m.noteEditor.Build()
 
 	splitContainer := container.NewHSplit(leftPanel, m.rightPanel)
-	splitContainer.SetOffset(0.17)
+	splitContainer.SetOffset(0.20)
 
 	m.fullContainer = container.NewBorder(
 		m.menuBarContainer,
@@ -163,7 +163,7 @@ func (m *MainUI) ToggleMinimizedMode(minimized bool) {
 		exitBtn := widget.NewButton("Exit Minimized Mode", func() {
 			m.ToggleMinimizedMode(false)
 			m.SetPinned(false)
-			m.window.Resize(fyne.NewSize(1200, 800))
+			m.window.Resize(fyne.NewSize(1000, 800))
 		})
 		exitBtn.Importance = widget.MediumImportance
 
