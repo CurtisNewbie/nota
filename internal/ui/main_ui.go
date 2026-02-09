@@ -65,7 +65,7 @@ func (m *MainUI) Build() fyne.CanvasObject {
 	m.rightPanel = m.noteEditor.Build()
 
 	splitContainer := container.NewHSplit(leftPanel, m.rightPanel)
-	splitContainer.SetOffset(0.13)
+	splitContainer.SetOffset(0.17)
 
 	m.fullContainer = container.NewBorder(
 		m.menuBarContainer,
@@ -164,7 +164,7 @@ func (m *MainUI) ToggleMinimizedMode(minimized bool) {
 			m.ToggleMinimizedMode(false)
 		})
 		exitBtn.Importance = widget.MediumImportance
-		
+
 		minimalContainer := container.NewVBox(
 			exitBtn,
 			m.noteEditor.titleEntry,
@@ -176,7 +176,7 @@ func (m *MainUI) ToggleMinimizedMode(minimized bool) {
 		// Restore full container
 		m.container = m.fullContainer
 	}
-	
+
 	// Update window content
 	m.window.SetContent(m.container)
 }
