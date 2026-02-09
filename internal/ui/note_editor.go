@@ -104,6 +104,9 @@ func (e *NoteEditor) DisplayNote(note *domain.Note) {
 		e.createdLabel.SetText("")
 		e.updatedLabel.SetText("")
 		e.statusLabel.SetText("No note selected")
+		// Disable fields when no note is selected
+		e.titleEntry.Disable()
+		e.contentEntry.Disable()
 		return
 	}
 
@@ -112,6 +115,9 @@ func (e *NoteEditor) DisplayNote(note *domain.Note) {
 	e.createdLabel.SetText(fmt.Sprintf("Created: %s", note.CreatedAt.Format("2006/01/02 15:04")))
 	e.updatedLabel.SetText(fmt.Sprintf("Updated: %s", note.UpdatedAt.Format("2006/01/02 15:04")))
 	e.statusLabel.SetText("Saved")
+	// Enable fields when a note is displayed
+	e.titleEntry.Enable()
+	e.contentEntry.Enable()
 
 	// Don't set edit mode here - let the caller control it
 	// e.setEditMode(false)
@@ -156,6 +162,9 @@ func (e *NoteEditor) ShowEmptyState() {
 	e.createdLabel.SetText("")
 	e.updatedLabel.SetText("")
 	e.statusLabel.SetText("No notes available. Click 'New Note' to create one.")
+	// Disable fields when no notes are available
+	e.titleEntry.Disable()
+	e.contentEntry.Disable()
 }
 
 // SetMinimalMode toggles minimal mode (hides UI elements)

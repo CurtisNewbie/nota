@@ -25,6 +25,7 @@ type NoteList struct {
 	container        *fyne.Container
 	menu             *fyne.Menu
 	popUpMenu        *widget.PopUpMenu
+	notesContainer   *fyne.Container
 }
 
 // NewNoteList creates a new note list
@@ -71,32 +72,11 @@ func (n *NoteList) Build() *fyne.Container {
 		n.searchEntry,
 	)
 
+	// Use a dummy list widget - actual notes will be displayed in notesContainer
 	n.noteList = widget.NewList(
-		func() int {
-			return len(n.notes)
-		},
-		func() fyne.CanvasObject {
-			titleLabel := widget.NewLabel("")
-			titleLabel.TextStyle = fyne.TextStyle{Bold: true}
-			dateLabel := widget.NewLabel("")
-			dateLabel.TextStyle = fyne.TextStyle{Italic: true}
-			dateLabel.Importance = widget.LowImportance
-			return container.NewVBox(titleLabel, dateLabel)
-		},
-		func(id widget.ListItemID, obj fyne.CanvasObject) {
-			container := obj.(*fyne.Container)
-			if id >= 0 && id < len(n.notes) {
-				note := n.notes[id]
-				updatedTime := note.UpdatedAt.Format("2006/01/02")
-				objects := container.Objects
-				if len(objects) >= 2 {
-					titleLabel := objects[0].(*widget.Label)
-					dateLabel := objects[1].(*widget.Label)
-					titleLabel.SetText(note.Title)
-					dateLabel.SetText(updatedTime)
-				}
-			}
-		},
+		func() int { return 0 },
+		func() fyne.CanvasObject { return container.NewVBox() },
+		func(id widget.ListItemID, obj fyne.CanvasObject) {},
 	)
 
 	n.noteList.OnSelected = func(id widget.ListItemID) {
@@ -105,16 +85,21 @@ func (n *NoteList) Build() *fyne.Container {
 		}
 	}
 
-	rightPanel := container.NewBorder(
+	// Create notesContainer for individual note buttons
+	n.notesContainer = container.NewVBox()
+	notesScroll := container.NewScroll(n.notesContainer)
+	notesScroll.SetMinSize(fyne.NewSize(150, 400))
+
+	// Store the notes container for updates
+	n.rightPanel = container.NewBorder(
 		toolbar,
 		nil,
 		nil,
 		nil,
-		n.noteList,
+		notesScroll,
 	)
 
-	n.rightPanel = rightPanel
-	n.container = container.NewBorder(nil, nil, nil, nil, rightPanel)
+	n.container = container.NewBorder(nil, nil, nil, nil, n.rightPanel)
 
 	return n.container
 }
@@ -145,12 +130,37 @@ func (n *NoteList) onDeleteRequested() {
 // DisplayNotes displays the list of notes
 func (n *NoteList) DisplayNotes(notes []*domain.Note) {
 	n.notes = notes
-	n.noteList.Refresh()
+
+	// Clear existing notes
+	if n.notesContainer != nil {
+		n.notesContainer.Objects = nil
+		n.notesContainer.Refresh()
+	}
+
+	// Add note buttons
+	for _, note := range notes {
+		// Create a button that wraps the note content
+		// Buttons always fire their OnTapped callback when clicked, even if already "selected"
+		noteButton := widget.NewButton(note.Title+"   "+note.UpdatedAt.Format("2006/01/02"), func() {
+			if n.selectionHandler != nil {
+				n.selectionHandler.OnNoteSelected(note)
+			}
+		})
+		noteButton.Alignment = widget.ButtonAlignLeading
+
+		n.notesContainer.Add(noteButton)
+	}
+
+	if n.notesContainer != nil {
+		n.notesContainer.Refresh()
+	}
 }
 
 // RefreshNoteList refreshes the note list from the service
 func (n *NoteList) RefreshNoteList() {
-	n.noteList.Refresh()
+	if n.notesContainer != nil {
+		n.notesContainer.Refresh()
+	}
 }
 
 // ClearSearch clears the search field

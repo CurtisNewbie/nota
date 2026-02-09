@@ -165,10 +165,8 @@ func (a *App) saveCurrentNote() {
 	a.hasUnsavedChanges = false
 	a.mainUI.MarkAsSaved()
 
-	// Refresh note list if this was a new note
-	if isNewNote {
-		a.mainUI.RefreshNoteList()
-	}
+	// Always refresh the note list after saving to show the latest changes
+	a.mainUI.RefreshNoteList()
 }
 
 // onNoteSelected is called when a note is selected from the list
@@ -180,7 +178,7 @@ func (a *App) onNoteSelected(note *domain.Note) {
 				if save {
 					a.saveCurrentNote()
 				}
-				// Fetch latest note from database
+				// Always load the selected note as the current note, regardless of save choice
 				rail := flow.EmptyRail()
 				latestNote, err := a.noteService.GetNote(rail, note.ID)
 				if err != nil {
@@ -259,6 +257,12 @@ func (a *App) createNewNote() {
 // onDeleteNote is called when user wants to delete the current note
 func (a *App) onDeleteNote() {
 	if a.currentNote == nil {
+		dialog.ShowInformation("No Note Selected", "Please select a note to delete", a.window)
+		return
+	}
+
+	if a.currentNote.ID == "" {
+		dialog.ShowInformation("Unsaved Note", "This note has not been saved yet and cannot be deleted", a.window)
 		return
 	}
 
