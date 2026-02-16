@@ -16,6 +16,7 @@ import (
 // NoteService defines the interface for note operations
 type NoteService interface {
 	ListNotes(rail flow.Rail) ([]*domain.Note, error)
+	ListNotesPaginated(rail flow.Rail, offset, limit int) ([]*domain.Note, error)
 }
 
 // ImportExportService defines the interface for import/export operations
@@ -109,17 +110,22 @@ func (m *MainUI) ShowEmptyState() {
 
 // RefreshNoteList refreshes the note list
 func (m *MainUI) RefreshNoteList() {
-	notes, err := m.noteService.ListNotes(flow.NewRail(context.Background()))
+	rail := flow.NewRail(context.Background())
+	noteList := m.noteList
+
+	// Load first page of notes
+	notes, err := m.noteService.ListNotesPaginated(rail, 0, noteList.GetPageSize())
 	if err != nil {
 		dialog.ShowError(err, m.window)
 		return
 	}
-	m.noteList.DisplayNotes(notes)
+	noteList.SetCurrentQuery("")
+	noteList.LoadNotes(notes)
 }
 
 // DisplaySearchResults displays search results
 func (m *MainUI) DisplaySearchResults(notes []*domain.Note) {
-	m.noteList.DisplayNotes(notes)
+	m.noteList.LoadNotes(notes)
 }
 
 // GetTitle returns the current title
@@ -150,6 +156,18 @@ func (m *MainUI) SetPinned(pinned bool) {
 // GetMenuBar returns the menu bar
 func (m *MainUI) GetMenuBar() *MenuBar {
 	return m.menuBar
+}
+
+// GetNoteList returns the note list
+func (m *MainUI) GetNoteList() *NoteList {
+	return m.noteList
+}
+
+// Close cleans up resources
+func (m *MainUI) Close() {
+	if m.noteList != nil {
+		m.noteList.StopScrollChecking()
+	}
 }
 
 // FocusContentForSearch focuses on the note content entry for search functionality

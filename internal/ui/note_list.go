@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"time"
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
@@ -27,6 +29,17 @@ type NoteList struct {
 	menu             *fyne.Menu
 	popUpMenu        *widget.PopUpMenu
 	notesContainer   *fyne.Container
+	// Pagination fields
+	currentOffset int
+	pageSize      int
+	currentQuery  string
+	hasMore       bool
+	loading       bool
+	loadMoreBtn   *widget.Button
+	// Auto-loading fields
+	scrollContainer   *container.Scroll
+	checkScrollTicker *time.Ticker
+	checkScrollDone   chan bool
 }
 
 // NewNoteList creates a new note list
@@ -34,6 +47,11 @@ func NewNoteList(selectionHandler NoteSelectionHandler, searchHandler SearchHand
 	return &NoteList{
 		selectionHandler: selectionHandler,
 		searchHandler:    searchHandler,
+		currentOffset:    0,
+		pageSize:         30,
+		currentQuery:     "",
+		hasMore:          true,
+		loading:          false,
 	}
 }
 
@@ -68,11 +86,26 @@ func (n *NoteList) Build() *fyne.Container {
 		n.searchEntry,
 	)
 
-	// Use a dummy list widget - actual notes will be displayed in notesContainer
+	// Create widget.List for displaying notes
 	n.noteList = widget.NewList(
-		func() int { return 0 },
-		func() fyne.CanvasObject { return container.NewVBox() },
-		func(id widget.ListItemID, obj fyne.CanvasObject) {},
+		func() int { return len(n.notes) },
+		func() fyne.CanvasObject {
+			// Create a container for each note item
+			titleLabel := widget.NewLabel("")
+			dateLabel := widget.NewLabel("")
+			dateLabel.TextStyle = fyne.TextStyle{Italic: true}
+			return container.NewVBox(titleLabel, dateLabel)
+		},
+		func(id widget.ListItemID, obj fyne.CanvasObject) {
+			if id >= 0 && id < len(n.notes) {
+				note := n.notes[id]
+				container := obj.(*fyne.Container)
+				titleLabel := container.Objects[0].(*widget.Label)
+				dateLabel := container.Objects[1].(*widget.Label)
+				titleLabel.SetText(note.Title)
+				dateLabel.SetText(note.UpdatedAt.Format("2006/01/02"))
+			}
+		},
 	)
 
 	n.noteList.OnSelected = func(id widget.ListItemID) {
@@ -81,18 +114,26 @@ func (n *NoteList) Build() *fyne.Container {
 		}
 	}
 
-	// Create notesContainer for individual note buttons
-	n.notesContainer = container.NewVBox()
-	notesScroll := container.NewScroll(n.notesContainer)
-	notesScroll.SetMinSize(fyne.NewSize(150, 400))
+	// Create Load More button (hidden - used for manual fallback if needed)
+	n.loadMoreBtn = widget.NewButton("Load More", func() {
+		n.loadMoreNotes()
+	})
+	n.loadMoreBtn.Hide()
 
-	// Store the notes container for updates
+	// Use Scroll container for the list
+	n.scrollContainer = container.NewScroll(n.noteList)
+	n.scrollContainer.SetMinSize(fyne.NewSize(150, 0)) // 0 height means fill available space
+
+	// Don't start scroll checking - use Load More button instead
+	// n.startScrollChecking()
+
+	// Use Border layout to put Load More button at bottom
 	n.rightPanel = container.NewBorder(
 		toolbar,
+		n.loadMoreBtn, // Load More button at bottom
 		nil,
 		nil,
-		nil,
-		notesScroll,
+		n.scrollContainer, // Fill all available space
 	)
 
 	n.container = container.NewBorder(nil, nil, nil, nil, n.rightPanel)
@@ -123,32 +164,156 @@ func (n *NoteList) onDeleteRequested() {
 	}
 }
 
-// DisplayNotes displays the list of notes
+// DisplayNotes displays the list of notes (for initial load or refresh)
 func (n *NoteList) DisplayNotes(notes []*domain.Note) {
+	// This method is called by the app with all notes or initial batch
+	// For pagination, we use LoadNotes or LoadMoreNotes instead
+	if notes == nil {
+		n.notes = []*domain.Note{}
+	} else {
+		n.notes = notes
+		n.hasMore = len(notes) == n.pageSize
+	}
+	n.noteList.Refresh()
+}
+
+// LoadNotes loads notes from scratch with pagination
+func (n *NoteList) LoadNotes(notes []*domain.Note) {
+	n.currentOffset = len(notes)
 	n.notes = notes
+	n.hasMore = len(notes) == n.pageSize
+	n.loading = false
+	n.noteList.Refresh()
 
-	// Clear existing notes
-	if n.notesContainer != nil {
-		n.notesContainer.Objects = nil
-		n.notesContainer.Refresh()
+	// Show/hide Load More button
+	if n.hasMore && len(notes) > 0 {
+		n.loadMoreBtn.Show()
+	} else {
+		n.loadMoreBtn.Hide()
+	}
+}
+
+// AppendNotes appends notes to the existing list (for pagination)
+func (n *NoteList) AppendNotes(notes []*domain.Note) {
+	if len(notes) > 0 {
+		n.notes = append(n.notes, notes...)
+		n.currentOffset = len(n.notes) // Use total count, not just the new notes
+		n.hasMore = len(notes) == n.pageSize
+		n.noteList.Refresh()
+	} else {
+		n.hasMore = false
+	}
+	n.loading = false
+
+	// Show/hide Load More button
+	if n.hasMore {
+		n.loadMoreBtn.Show()
+	} else {
+		n.loadMoreBtn.Hide()
+	}
+}
+
+// loadMoreNotes loads the next page of notes
+func (n *NoteList) loadMoreNotes() {
+	if n.loading || !n.hasMore {
+		return
 	}
 
-	// Add note buttons
-	for _, note := range notes {
-		// Create a button that wraps the note content
-		// Buttons always fire their OnTapped callback when clicked, even if already "selected"
-		noteButton := widget.NewButton(note.Title+"   "+note.UpdatedAt.Format("2006/01/02"), func() {
-			if n.selectionHandler != nil {
-				n.selectionHandler.OnNoteSelected(note)
+	n.loading = true
+	if n.searchHandler != nil {
+		n.searchHandler.OnSearch(n.currentQuery)
+	}
+}
+
+// SetLoading sets the loading state
+func (n *NoteList) SetLoading(loading bool) {
+	n.loading = loading
+}
+
+// IsLoading returns whether currently loading
+func (n *NoteList) IsLoading() bool {
+	return n.loading
+}
+
+// GetOffset returns the current offset for pagination
+func (n *NoteList) GetOffset() int {
+	return n.currentOffset
+}
+
+// GetPageSize returns the page size
+func (n *NoteList) GetPageSize() int {
+	return n.pageSize
+}
+
+// GetCurrentQuery returns the current search query
+func (n *NoteList) GetCurrentQuery() string {
+	return n.currentQuery
+}
+
+// SetCurrentQuery sets the current search query
+func (n *NoteList) SetCurrentQuery(query string) {
+	n.currentQuery = query
+}
+
+// HasMore returns whether there are more notes to load
+func (n *NoteList) HasMore() bool {
+	return n.hasMore
+}
+
+// SetHasMore sets whether there are more notes to load
+func (n *NoteList) SetHasMore(hasMore bool) {
+	n.hasMore = hasMore
+}
+
+// startScrollChecking starts the scroll position checking goroutine
+func (n *NoteList) startScrollChecking() {
+	if n.checkScrollTicker != nil {
+		// Already running
+		return
+	}
+
+	n.checkScrollTicker = time.NewTicker(200 * time.Millisecond)
+	n.checkScrollDone = make(chan bool)
+
+	go func() {
+		for {
+			select {
+			case <-n.checkScrollTicker.C:
+				// Check if we're on the main thread, if not we need to handle this differently
+				// For now, just call directly - the checkScrollPosition method itself should be safe
+				n.checkScrollPosition()
+			case <-n.checkScrollDone:
+				return
 			}
-		})
-		noteButton.Alignment = widget.ButtonAlignLeading
+		}
+	}()
+}
 
-		n.notesContainer.Add(noteButton)
+// checkScrollPosition checks if scrolled near bottom and triggers load more
+func (n *NoteList) checkScrollPosition() {
+	if !n.hasMore || n.loading || n.scrollContainer == nil {
+		return
 	}
 
-	if n.notesContainer != nil {
-		n.notesContainer.Refresh()
+	// Calculate scroll position
+	offset := n.scrollContainer.Offset.Y
+	contentSize := n.scrollContainer.Content.Size().Height
+	size := n.scrollContainer.Size().Height
+
+	// Load more when scrolled to within 100px of bottom
+	threshold := float32(100)
+	if offset >= float32(contentSize-size)-threshold {
+		n.loadMoreNotes()
+	}
+}
+
+// StopScrollChecking stops the scroll position checking goroutine
+func (n *NoteList) StopScrollChecking() {
+	if n.checkScrollTicker != nil {
+		n.checkScrollTicker.Stop()
+		close(n.checkScrollDone)
+		n.checkScrollTicker = nil
+		n.checkScrollDone = nil
 	}
 }
 

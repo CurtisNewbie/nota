@@ -124,12 +124,21 @@ func (a *App) onClose() {
 				if save {
 					a.saveCurrentNote()
 				}
+				a.cleanup()
 				a.fyneApp.Quit()
 			},
 			a.window,
 		)
 	} else {
+		a.cleanup()
 		a.fyneApp.Quit()
+	}
+}
+
+// cleanup cleans up resources before quitting
+func (a *App) cleanup() {
+	if a.mainUI != nil {
+		a.mainUI.Close()
 	}
 }
 
@@ -430,21 +439,57 @@ func (a *App) onExportNote() {
 	fd.Show()
 }
 
-// onSearch is called when user searches for notes
+// onSearch is called when user searches for notes or loads more pages
 func (a *App) onSearch(query string) {
+	noteList := a.mainUI.GetNoteList()
+
 	if query == "" {
-		a.mainUI.RefreshNoteList()
+		// Not searching
+		if noteList.GetCurrentQuery() == "" && noteList.HasMore() && noteList.IsLoading() {
+			// Loading more pages of all notes (Load More button clicked)
+			rail := flow.EmptyRail()
+			notes, err := a.noteService.ListNotesPaginated(rail, noteList.GetOffset(), noteList.GetPageSize())
+			if err != nil {
+				dialog.ShowError(err, a.window)
+				return
+			}
+			noteList.SetLoading(false)
+			if len(notes) < noteList.GetPageSize() {
+				noteList.SetHasMore(false)
+			}
+			noteList.AppendNotes(notes)
+		} else {
+			// Refresh - load first page
+			a.mainUI.RefreshNoteList()
+		}
 		return
 	}
 
-	rail := flow.EmptyRail()
-	notes, err := a.noteService.SearchNotes(rail, query)
-	if err != nil {
-		dialog.ShowError(err, a.window)
-		return
+	// Check if this is a new query
+	if query != noteList.GetCurrentQuery() {
+		// New query - reset and load first page
+		noteList.SetCurrentQuery(query)
+		rail := flow.EmptyRail()
+		notes, err := a.noteService.SearchNotesPaginated(rail, query, 0, noteList.GetPageSize())
+		if err != nil {
+			dialog.ShowError(err, a.window)
+			return
+		}
+		noteList.LoadNotes(notes)
+	} else if noteList.HasMore() && noteList.IsLoading() {
+		// Same query - load next page (Load More button clicked)
+		rail := flow.EmptyRail()
+		notes, err := a.noteService.SearchNotesPaginated(rail, query, noteList.GetOffset(), noteList.GetPageSize())
+		if err != nil {
+			dialog.ShowError(err, a.window)
+			return
+		}
+		noteList.SetLoading(false)
+		if len(notes) < noteList.GetPageSize() {
+			noteList.SetHasMore(false)
+		}
+		noteList.AppendNotes(notes)
 	}
-
-	a.mainUI.DisplaySearchResults(notes)
 }
 
 // onPinNote is called when user toggles pin mode

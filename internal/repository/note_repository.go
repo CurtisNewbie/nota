@@ -17,9 +17,12 @@ type NoteRepository interface {
 	FindByID(rail flow.Rail, id string) (*domain.Note, error)
 	FindAll(rail flow.Rail) ([]*domain.Note, error)
 	FindAllSorted(rail flow.Rail) ([]*domain.Note, error)
+	FindAllSortedPaginated(rail flow.Rail, offset, limit int) ([]*domain.Note, error)
 	Search(rail flow.Rail, query string) ([]*domain.Note, error)
+	SearchPaginated(rail flow.Rail, query string, offset, limit int) ([]*domain.Note, error)
 	Delete(rail flow.Rail, id string) error
 	FindByTitle(rail flow.Rail, title string) (*domain.Note, error)
+	FindLastModified(rail flow.Rail) (*domain.Note, error)
 }
 
 // SQLiteNoteRepository implements NoteRepository for SQLite
@@ -79,6 +82,20 @@ func (r *SQLiteNoteRepository) FindAllSorted(rail flow.Rail) ([]*domain.Note, er
 	return notes, err
 }
 
+// FindAllSortedPaginated finds notes sorted by updated_at DESC with pagination (excluding soft-deleted)
+func (r *SQLiteNoteRepository) FindAllSortedPaginated(rail flow.Rail, offset, limit int) ([]*domain.Note, error) {
+	rail.Debugf("Finding notes sorted by updated_at (offset=%d, limit=%d)", offset, limit)
+	var notes []*domain.Note
+	q := dbquery.NewQuery(rail, r.db).Table("note").
+		Where("deleted_at IS NULL").
+		Order("updated_at DESC").
+		Limit(limit).
+		Offset(offset)
+	_, err := q.Scan(&notes)
+	rail.Debugf("Found %d notes", len(notes))
+	return notes, err
+}
+
 // Search searches notes by title and content using LIKE-based search
 func (r *SQLiteNoteRepository) Search(rail flow.Rail, query string) ([]*domain.Note, error) {
 	if query == "" {
@@ -91,6 +108,25 @@ func (r *SQLiteNoteRepository) Search(rail flow.Rail, query string) ([]*domain.N
 	q := dbquery.NewQuery(rail, r.db).Table("note").
 		Where("deleted_at IS NULL AND (title LIKE ? OR content LIKE ?)", searchPattern, searchPattern).
 		Order("updated_at DESC")
+	_, err := q.Scan(&notes)
+	rail.Debugf("Found %d notes matching query", len(notes))
+	return notes, err
+}
+
+// SearchPaginated searches notes by title and content using LIKE-based search with pagination
+func (r *SQLiteNoteRepository) SearchPaginated(rail flow.Rail, query string, offset, limit int) ([]*domain.Note, error) {
+	if query == "" {
+		return r.FindAllSortedPaginated(rail, offset, limit)
+	}
+
+	rail.Debugf("Searching notes with query: %s (offset=%d, limit=%d)", query, offset, limit)
+	var notes []*domain.Note
+	searchPattern := "%" + query + "%"
+	q := dbquery.NewQuery(rail, r.db).Table("note").
+		Where("deleted_at IS NULL AND (title LIKE ? OR content LIKE ?)", searchPattern, searchPattern).
+		Order("updated_at DESC").
+		Limit(limit).
+		Offset(offset)
 	_, err := q.Scan(&notes)
 	rail.Debugf("Found %d notes matching query", len(notes))
 	return notes, err
@@ -120,5 +156,22 @@ func (r *SQLiteNoteRepository) FindByTitle(rail flow.Rail, title string) (*domai
 		rail.Warnf("Note not found with title: %s", title)
 		return nil, err
 	}
+	return &note, nil
+}
+
+// FindLastModified finds the most recently modified note (excluding soft-deleted)
+func (r *SQLiteNoteRepository) FindLastModified(rail flow.Rail) (*domain.Note, error) {
+	rail.Debugf("Finding last modified note")
+	var note domain.Note
+	q := dbquery.NewQuery(rail, r.db).Table("note").
+		Where("deleted_at IS NULL").
+		Order("updated_at DESC").
+		Limit(1)
+	_, err := q.Scan(&note)
+	if err != nil {
+		rail.Warnf("No notes found")
+		return nil, err
+	}
+	rail.Debugf("Last modified note: %s", note.ID)
 	return &note, nil
 }

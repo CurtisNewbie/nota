@@ -21,7 +21,9 @@ type NoteService interface {
 	DeleteNote(rail flow.Rail, id string) error
 	GetNote(rail flow.Rail, id string) (*domain.Note, error)
 	ListNotes(rail flow.Rail) ([]*domain.Note, error)
+	ListNotesPaginated(rail flow.Rail, offset, limit int) ([]*domain.Note, error)
 	SearchNotes(rail flow.Rail, query string) ([]*domain.Note, error)
+	SearchNotesPaginated(rail flow.Rail, query string, offset, limit int) ([]*domain.Note, error)
 	GetLastModifiedNote(rail flow.Rail) (*domain.Note, error)
 }
 
@@ -118,26 +120,32 @@ func (s *NoteServiceImpl) ListNotes(rail flow.Rail) ([]*domain.Note, error) {
 	return s.noteRepo.FindAllSorted(rail)
 }
 
+// ListNotesPaginated retrieves notes with pagination (excludes soft-deleted), sorted by updated_at DESC
+func (s *NoteServiceImpl) ListNotesPaginated(rail flow.Rail, offset, limit int) ([]*domain.Note, error) {
+	rail.Debugf("Listing notes with pagination (offset=%d, limit=%d)", offset, limit)
+	return s.noteRepo.FindAllSortedPaginated(rail, offset, limit)
+}
+
 // SearchNotes searches notes by title and content using FTS
 func (s *NoteServiceImpl) SearchNotes(rail flow.Rail, query string) ([]*domain.Note, error) {
 	rail.Debugf("Searching notes with query: %s", query)
 	return s.noteRepo.Search(rail, query)
 }
 
+// SearchNotesPaginated searches notes by title and content using FTS with pagination
+func (s *NoteServiceImpl) SearchNotesPaginated(rail flow.Rail, query string, offset, limit int) ([]*domain.Note, error) {
+	rail.Debugf("Searching notes with query: %s (offset=%d, limit=%d)", query, offset, limit)
+	return s.noteRepo.SearchPaginated(rail, query, offset, limit)
+}
+
 // GetLastModifiedNote retrieves the most recently modified note
 func (s *NoteServiceImpl) GetLastModifiedNote(rail flow.Rail) (*domain.Note, error) {
 	rail.Debugf("Getting last modified note")
-	notes, err := s.noteRepo.FindAllSorted(rail)
+	note, err := s.noteRepo.FindLastModified(rail)
 	if err != nil {
 		rail.Errorf("Failed to get last modified note: %v", err)
-		return nil, err
-	}
-
-	if len(notes) == 0 {
-		rail.Warnf("No notes found")
 		return nil, ErrNoteNotFound
 	}
-
-	rail.Infof("Last modified note: %s", notes[0].ID)
-	return notes[0], nil
+	rail.Infof("Last modified note: %s", note.ID)
+	return note, nil
 }
