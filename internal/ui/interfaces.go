@@ -2,6 +2,7 @@ package ui
 
 import (
 	"github.com/curtisnewbie/nota/internal/domain"
+	"github.com/curtisnewbie/nota/internal/i18n"
 )
 
 // NoteSelectionHandler handles note selection events
@@ -38,4 +39,9 @@ type SearchHandler interface {
 // PinHandler handles pin mode events
 type PinHandler interface {
 	OnPinNote(pin bool)
+}
+
+// LanguageHandler handles language change events
+type LanguageHandler interface {
+	OnLanguageChanged(lang i18n.Language)
 }

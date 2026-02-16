@@ -5,6 +5,7 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 	"github.com/curtisnewbie/nota/internal/domain"
+	"github.com/curtisnewbie/nota/internal/i18n"
 )
 
 // DeleteHandler handles note deletion events
@@ -48,8 +49,10 @@ func (n *NoteList) SetDeleteHandler(handler DeleteHandler) {
 
 // Build builds the note list UI
 func (n *NoteList) Build() *fyne.Container {
+	t := i18n.T()
+
 	n.searchEntry = widget.NewEntry()
-	n.searchEntry.SetPlaceHolder("Search notes...")
+	n.searchEntry.SetPlaceHolder(t.Editor.PlaceholderSearch)
 	n.searchEntry.OnChanged = func(query string) {
 		if n.searchHandler != nil {
 			n.searchHandler.OnSearch(query)
@@ -104,7 +107,7 @@ func (n *NoteList) ShowContextMenu(pos fyne.Position) {
 	}
 
 	// Create popup menu
-	deleteItem := fyne.NewMenuItem("Delete", func() {
+	deleteItem := fyne.NewMenuItem(i18n.T().Menu.Delete, func() {
 		n.onDeleteRequested()
 	})
 

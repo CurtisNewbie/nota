@@ -10,6 +10,7 @@ import (
 	"fyne.io/fyne/v2/widget"
 	"github.com/curtisnewbie/miso/flow"
 	"github.com/curtisnewbie/nota/internal/domain"
+	"github.com/curtisnewbie/nota/internal/i18n"
 )
 
 // NoteService defines the interface for note operations
@@ -48,7 +49,7 @@ func NewMainUI(
 		noteService: noteService,
 	}
 
-	mainUI.menuBar = NewMenuBar(app, app, app.GetDatabaseLocation())
+	mainUI.menuBar = NewMenuBar(app, app, app.(LanguageHandler), app.GetDatabaseLocation())
 	mainUI.menuBar.SetWindow(window)
 	mainUI.noteEditor = NewNoteEditor(app)
 	mainUI.noteEditor.SetDeleteHandler(app)
@@ -146,7 +147,12 @@ func (m *MainUI) SetPinned(pinned bool) {
 	m.menuBar.SetPinned(pinned)
 }
 
-// StartSaving marks the start of a save operation
+// GetMenuBar returns the menu bar
+func (m *MainUI) GetMenuBar() *MenuBar {
+	return m.menuBar
+}
+
+// FocusContentForSearch focuses on the note content entry for search functionality
 func (m *MainUI) StartSaving() {
 	m.noteEditor.StartSaving()
 }
@@ -171,6 +177,8 @@ func (m *MainUI) ToggleMinimizedMode(minimized bool) {
 		// Keep window on top in minimized mode
 		SetWindowOnTopByTitle(m.window.Title(), true)
 
+		t := i18n.T()
+
 		// Create minimal container with title, content, and buttons
 		saveBtn := widget.NewButtonWithIcon("", theme.DocumentSaveIcon(), func() {
 			if m.app != nil {
@@ -179,10 +187,10 @@ func (m *MainUI) ToggleMinimizedMode(minimized bool) {
 		})
 		saveBtn.Importance = widget.HighImportance
 
-		exitBtn := widget.NewButton("Exit", func() {
+		exitBtn := widget.NewButton(t.Editor.Exit, func() {
 			m.ExitMinimizedMode()
 		})
-		exitBtn.Importance = widget.MediumImportance
+		exitBtn.Importance = widget.LowImportance
 
 		// Create button row with save and exit buttons
 		buttonRow := container.NewHBox(saveBtn, exitBtn)
@@ -198,7 +206,7 @@ func (m *MainUI) ToggleMinimizedMode(minimized bool) {
 		// Create fresh widget instances for minimized mode to avoid state conflicts
 		titleEntry := widget.NewEntry()
 		titleEntry.SetText(m.noteEditor.GetTitle())
-		titleEntry.PlaceHolder = "Note Title"
+		titleEntry.PlaceHolder = t.Editor.TitlePlaceholder
 		// Add OnChanged callback to trigger status updates (same as normal mode)
 		titleEntry.OnChanged = func(string) {
 			if m.app != nil && !m.noteEditor.IsSaving() {
@@ -208,7 +216,7 @@ func (m *MainUI) ToggleMinimizedMode(minimized bool) {
 
 		contentEntry := widget.NewMultiLineEntry()
 		contentEntry.SetText(m.noteEditor.GetContent())
-		contentEntry.SetPlaceHolder("Note Content")
+		contentEntry.SetPlaceHolder(t.Editor.ContentPlaceholder)
 		contentEntry.Wrapping = fyne.TextWrapWord
 		contentEntry.SetMinRowsVisible(20)
 		// Add OnChanged callback to trigger status updates (same as normal mode)

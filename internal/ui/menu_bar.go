@@ -6,12 +6,14 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
+	"github.com/curtisnewbie/nota/internal/i18n"
 )
 
 // MenuBar represents the top menu bar
 type MenuBar struct {
 	appActionsHandler AppActionsHandler
 	pinHandler        PinHandler
+	languageHandler   LanguageHandler
 	pinned            bool
 	databaseLocation  string
 	container         *fyne.Container
@@ -19,10 +21,11 @@ type MenuBar struct {
 }
 
 // NewMenuBar creates a new menu bar
-func NewMenuBar(appActions AppActionsHandler, pinHandler PinHandler, dbLocation string) *MenuBar {
+func NewMenuBar(appActions AppActionsHandler, pinHandler PinHandler, languageHandler LanguageHandler, dbLocation string) *MenuBar {
 	return &MenuBar{
 		appActionsHandler: appActions,
 		pinHandler:        pinHandler,
+		languageHandler:   languageHandler,
 		databaseLocation:  dbLocation,
 	}
 }
@@ -34,25 +37,32 @@ func (m *MenuBar) SetWindow(window fyne.Window) {
 
 // Build builds the menu bar UI
 func (m *MenuBar) Build() *fyne.Container {
-	noteBtn := widget.NewButton("Note", func() {
+	t := i18n.T()
+
+	noteBtn := widget.NewButton(t.Menu.Note, func() {
 		m.showNoteMenu()
 	})
 
-	fileBtn := widget.NewButton("File", func() {
+	fileBtn := widget.NewButton(t.Menu.File, func() {
 		m.showFileMenu()
 	})
 
-	viewBtn := widget.NewButton("View", func() {
+	viewBtn := widget.NewButton(t.Menu.View, func() {
 		m.showViewMenu()
 	})
 
-	dbLabel := widget.NewLabel(fmt.Sprintf("DB: %s", m.databaseLocation))
+	languageBtn := widget.NewButton(t.Menu.Language, func() {
+		m.showLanguageMenu()
+	})
+
+	dbLabel := widget.NewLabel(fmt.Sprintf(t.Database.Location, m.databaseLocation))
 	dbLabel.TextStyle = fyne.TextStyle{Italic: true}
 
 	m.container = container.NewHBox(
 		noteBtn,
 		fileBtn,
 		viewBtn,
+		languageBtn,
 		widget.NewSeparator(),
 		dbLabel,
 	)
@@ -66,8 +76,10 @@ func (m *MenuBar) showNoteMenu() {
 		return
 	}
 
+	t := i18n.T()
+
 	menu := fyne.NewMenu("",
-		fyne.NewMenuItem("New Note", func() {
+		fyne.NewMenuItem(t.Menu.NewNote, func() {
 			m.appActionsHandler.OnCreateNote()
 		}),
 	)
@@ -84,11 +96,13 @@ func (m *MenuBar) showFileMenu() {
 		return
 	}
 
+	t := i18n.T()
+
 	menu := fyne.NewMenu("",
-		fyne.NewMenuItem("Import", func() {
+		fyne.NewMenuItem(t.Menu.Import, func() {
 			m.appActionsHandler.OnImportNote()
 		}),
-		fyne.NewMenuItem("Export", func() {
+		fyne.NewMenuItem(t.Menu.Export, func() {
 			m.appActionsHandler.OnExportNote()
 		}),
 	)
@@ -105,14 +119,43 @@ func (m *MenuBar) showViewMenu() {
 		return
 	}
 
+	t := i18n.T()
+
 	menu := fyne.NewMenu("",
-		fyne.NewMenuItem("Minimized Mode", func() {
+		fyne.NewMenuItem(t.Menu.MinimizedMode, func() {
 			m.togglePinMode()
 		}),
 	)
 
 	popUp := widget.NewPopUpMenu(menu, m.window.Canvas())
 	pos := m.menuButtonPosition(2)
+	popUp.Move(pos)
+	popUp.Show()
+}
+
+// showLanguageMenu shows the Language dropdown menu
+func (m *MenuBar) showLanguageMenu() {
+	if m.window == nil {
+		return
+	}
+
+	t := i18n.T()
+
+	menu := fyne.NewMenu("",
+		fyne.NewMenuItem(t.Menu.English, func() {
+			if m.languageHandler != nil {
+				m.languageHandler.OnLanguageChanged(i18n.LanguageEnglish)
+			}
+		}),
+		fyne.NewMenuItem(t.Menu.Chinese, func() {
+			if m.languageHandler != nil {
+				m.languageHandler.OnLanguageChanged(i18n.LanguageChinese)
+			}
+		}),
+	)
+
+	popUp := widget.NewPopUpMenu(menu, m.window.Canvas())
+	pos := m.menuButtonPosition(3)
 	popUp.Move(pos)
 	popUp.Show()
 }
@@ -139,4 +182,33 @@ func (m *MenuBar) togglePinMode() {
 // SetPinned updates the pin mode state
 func (m *MenuBar) SetPinned(pinned bool) {
 	m.pinned = pinned
+}
+
+// Refresh refreshes the menu bar UI (used when language changes)
+func (m *MenuBar) Refresh() {
+	t := i18n.T()
+	buttons := m.container.Objects
+
+	// Update button texts
+	if len(buttons) >= 4 {
+		if noteBtn, ok := buttons[0].(*widget.Button); ok {
+			noteBtn.SetText(t.Menu.Note)
+		}
+		if fileBtn, ok := buttons[1].(*widget.Button); ok {
+			fileBtn.SetText(t.Menu.File)
+		}
+		if viewBtn, ok := buttons[2].(*widget.Button); ok {
+			viewBtn.SetText(t.Menu.View)
+		}
+		if langBtn, ok := buttons[3].(*widget.Button); ok {
+			langBtn.SetText(t.Menu.Language)
+		}
+	}
+
+	// Update database label
+	if len(buttons) >= 5 {
+		if dbLabel, ok := buttons[5].(*widget.Label); ok {
+			dbLabel.SetText(fmt.Sprintf(t.Database.Location, m.databaseLocation))
+		}
+	}
 }

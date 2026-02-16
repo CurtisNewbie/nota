@@ -8,6 +8,7 @@ import (
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/curtisnewbie/nota/internal/domain"
+	"github.com/curtisnewbie/nota/internal/i18n"
 )
 
 // NoteEditor represents the note editor panel
@@ -42,8 +43,10 @@ func NewNoteEditor(editHandler NoteEditHandler) *NoteEditor {
 
 // Build builds the note editor UI
 func (e *NoteEditor) Build() *fyne.Container {
+	t := i18n.T()
+
 	e.titleEntry = widget.NewEntry()
-	e.titleEntry.SetPlaceHolder("Note Title")
+	e.titleEntry.SetPlaceHolder(t.Editor.TitlePlaceholder)
 	e.titleEntry.OnChanged = func(string) {
 		if e.editHandler != nil && !e.isSaving {
 			e.editHandler.OnContentChanged()
@@ -55,7 +58,7 @@ func (e *NoteEditor) Build() *fyne.Container {
 	// For now, this provides a fallback when entry doesn't have focus
 
 	e.contentEntry = widget.NewMultiLineEntry()
-	e.contentEntry.SetPlaceHolder("Note content...")
+	e.contentEntry.SetPlaceHolder(t.Editor.ContentPlaceholder)
 	e.contentEntry.SetMinRowsVisible(30) // Increase default visible rows
 	e.contentEntry.OnChanged = func(string) {
 		if e.editHandler != nil && !e.isSaving {
@@ -210,7 +213,7 @@ func (e *NoteEditor) ShowEmptyState() {
 	e.contentEntry.SetText("")
 	e.createdLabel.SetText("")
 	e.updatedLabel.SetText("")
-	e.statusLabel.SetText("No notes available. Click 'New Note' to create one.")
+	e.statusLabel.SetText(i18n.T().Dialog.NoNotesAvailable)
 	// Disable fields when no notes are available
 	e.titleEntry.Disable()
 	e.contentEntry.Disable()

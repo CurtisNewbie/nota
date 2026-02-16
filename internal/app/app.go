@@ -13,6 +13,7 @@ import (
 	"github.com/curtisnewbie/miso/flow"
 	"github.com/curtisnewbie/miso/util/atom"
 	"github.com/curtisnewbie/nota/internal/domain"
+	"github.com/curtisnewbie/nota/internal/i18n"
 	"github.com/curtisnewbie/nota/internal/infrastructure"
 	"github.com/curtisnewbie/nota/internal/repository"
 	"github.com/curtisnewbie/nota/internal/service"
@@ -25,6 +26,7 @@ type App struct {
 	window              fyne.Window
 	noteService         service.NoteService
 	importExportService service.ImportExportService
+	configService       service.ConfigService
 	mainUI              *ui.MainUI
 	currentNote         *domain.Note
 	hasUnsavedChanges   bool
@@ -54,11 +56,14 @@ func NewApp() (*App, error) {
 	noteRepo := repository.NewSQLiteNoteRepository(db)
 	noteService := service.NewNoteService(noteRepo)
 	importExportService := service.NewImportExportService(noteRepo)
+	configRepo := repository.NewSQLiteConfigRepository(db)
+	configService := service.NewConfigService(configRepo)
 
 	appInstance := &App{
 		fyneApp:             fyneApp,
 		noteService:         noteService,
 		importExportService: importExportService,
+		configService:       configService,
 	}
 
 	window := fyneApp.NewWindow("Nota")
@@ -68,6 +73,13 @@ func NewApp() (*App, error) {
 	})
 
 	appInstance.window = window
+
+	// Load language preference
+	lang, err := configService.GetLanguage(rail)
+	if err == nil {
+		i18n.SetLanguage(lang)
+		rail.Infof("Loaded language preference: %s", lang)
+	}
 
 	mainUI := ui.NewMainUI(window, noteService, importExportService, appInstance)
 	appInstance.mainUI = mainUI
@@ -169,7 +181,12 @@ func (a *App) saveCurrentNote() {
 	}
 
 	if err != nil {
-		dialog.ShowError(err, a.window)
+		// Check if it's an empty title error and show translated message
+		if err == service.ErrEmptyTitle {
+			dialog.ShowError(fmt.Errorf(i18n.T().Dialog.TitleCannotBeEmpty), a.window)
+		} else {
+			dialog.ShowError(err, a.window)
+		}
 		return
 	}
 
@@ -284,12 +301,13 @@ func (a *App) onDeleteNote() {
 	}
 
 	if a.currentNote.ID == "" {
-		dialog.ShowInformation("Unsaved Note", "This note has not been saved yet and cannot be deleted", a.window)
+		t := i18n.T()
+		dialog.ShowInformation(t.Dialog.UnsavedNote, t.Dialog.CannotDelete, a.window)
 		return
 	}
 
-	dialog.ShowConfirm("Delete Note",
-		"Are you sure you want to delete this note?",
+	dialog.ShowConfirm(i18n.T().Dialog.DeleteNote,
+		i18n.T().Dialog.SureDelete,
 		func(confirmed bool) {
 			if confirmed {
 				rail := flow.EmptyRail()
@@ -500,4 +518,24 @@ func (a *App) OnSearch(query string) {
 // OnPinNote implements PinHandler interface
 func (a *App) OnPinNote(pin bool) {
 	a.onPinNote(pin)
+}
+
+// OnLanguageChanged implements LanguageHandler interface
+func (a *App) OnLanguageChanged(lang i18n.Language) {
+	rail := flow.EmptyRail()
+
+	// Save language preference
+	err := a.configService.SaveLanguage(rail, lang)
+	if err != nil {
+		rail.Errorf("Failed to save language preference: %v", err)
+		dialog.ShowError(err, a.window)
+		return
+	}
+
+	// Set the language
+	i18n.SetLanguage(lang)
+	rail.Infof("Language changed to: %s", lang)
+
+	// Refresh menu bar
+	a.mainUI.GetMenuBar().Refresh()
 }

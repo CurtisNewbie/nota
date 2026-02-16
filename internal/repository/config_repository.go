@@ -28,13 +28,32 @@ func NewSQLiteConfigRepository(db *gorm.DB) ConfigRepository {
 // Save saves a config (create or update)
 func (r *SQLiteConfigRepository) Save(rail flow.Rail, config *domain.Config) error {
 	rail.Debugf("Saving config: %s", config.Name)
-	q := dbquery.NewQuery(rail, r.db).Table("config")
-	_, err := q.Create(config)
+
+	// Check if config exists
+	var existing domain.Config
+	ok, err := dbquery.NewQuery(rail, r.db).Table("config").Where("name = ?", config.Name).Limit(1).ScanAny(&existing)
 	if err != nil {
-		rail.Errorf("Failed to save config %s: %v", config.Name, err)
+		// Some other error
+		rail.Errorf("Failed to check config %s: %v", config.Name, err)
+		return err
+	} else if !ok {
+		// Config doesn't exist, create it
+		err = dbquery.NewQuery(rail, r.db).Table("config").CreateAny(config)
+		if err != nil {
+			rail.Errorf("Failed to create config %s: %v", config.Name, err)
+		} else {
+			rail.Infof("Successfully created config: %s", config.Name)
+		}
 	} else {
-		rail.Infof("Successfully saved config: %s", config.Name)
+		// Config exists, update it
+		err = dbquery.NewQuery(rail, r.db).Table("config").Where("name = ?", config.Name).Set("value", config.Value).UpdateAny()
+		if err != nil {
+			rail.Errorf("Failed to update config %s: %v", config.Name, err)
+		} else {
+			rail.Infof("Successfully updated config: %s", config.Name)
+		}
 	}
+
 	return err
 }
 
