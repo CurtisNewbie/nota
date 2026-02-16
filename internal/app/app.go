@@ -1,6 +1,9 @@
 package app
 
 import (
+	"encoding/json"
+	"fmt"
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/dialog"
@@ -344,10 +347,17 @@ func (a *App) onImportNote() {
 	fd.Show()
 }
 
-// onExportNote is called when user wants to export the current note
+// onExportNote is called when user wants to export all notes
 func (a *App) onExportNote() {
-	if a.currentNote == nil {
-		dialog.ShowInformation("No Note Selected", "Please select a note to export", a.window)
+	rail := flow.EmptyRail()
+	notes, err := a.noteService.ListNotes(rail)
+	if err != nil {
+		dialog.ShowError(err, a.window)
+		return
+	}
+
+	if len(notes) == 0 {
+		dialog.ShowInformation("No Notes", "There are no notes to export", a.window)
 		return
 	}
 
@@ -357,18 +367,39 @@ func (a *App) onExportNote() {
 		}
 		defer writer.Close()
 
-		path := writer.URI().Path()
-		rail := flow.EmptyRail()
-		err = a.importExportService.ExportNote(rail, a.currentNote, path)
+		// Create export structure with all notes
+		type ExportData struct {
+			Version int               `json:"version"`
+			Notes   []domain.NoteJSON `json:"notes"`
+			Count   int               `json:"count"`
+		}
+
+		exportData := ExportData{
+			Version: 1,
+			Notes:   make([]domain.NoteJSON, len(notes)),
+			Count:   len(notes),
+		}
+
+		for i, note := range notes {
+			exportData.Notes[i] = note.ToJSON()
+		}
+
+		data, err := json.MarshalIndent(exportData, "", "  ")
 		if err != nil {
 			dialog.ShowError(err, a.window)
 			return
 		}
 
-		dialog.ShowInformation("Export Successful", "Note exported successfully", a.window)
+		_, err = writer.Write(data)
+		if err != nil {
+			dialog.ShowError(err, a.window)
+			return
+		}
+
+		dialog.ShowInformation("Export Successful", fmt.Sprintf("Successfully exported %d notes", len(notes)), a.window)
 	}, a.window)
 
-	fd.SetFileName("note_export.json")
+	fd.SetFileName("nota_export.json")
 	fd.SetFilter(storage.NewExtensionFileFilter([]string{".json"}))
 	fd.Show()
 }
