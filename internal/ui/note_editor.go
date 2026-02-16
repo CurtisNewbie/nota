@@ -28,7 +28,7 @@ type NoteEditor struct {
 	container             *fyne.Container
 	minimizedTitleEntry   *widget.Entry
 	minimizedContentEntry *widget.Entry
-	minimizedStatusLabel *widget.Label
+	minimizedStatusLabel  *widget.Label
 }
 
 // NewNoteEditor creates a new note editor
@@ -54,7 +54,7 @@ func (e *NoteEditor) Build() *fyne.Container {
 
 	e.contentEntry = widget.NewMultiLineEntry()
 	e.contentEntry.SetPlaceHolder("Note content...")
-	e.contentEntry.SetMinRowsVisible(20) // Increase default visible rows
+	e.contentEntry.SetMinRowsVisible(30) // Increase default visible rows
 	e.contentEntry.OnChanged = func(string) {
 		if e.editHandler != nil && !e.isSaving {
 			e.editHandler.OnContentChanged()
@@ -70,7 +70,7 @@ func (e *NoteEditor) Build() *fyne.Container {
 	e.statusLabel = widget.NewLabel("")
 	e.statusLabel.TextStyle = fyne.TextStyle{Bold: true}
 
-	e.saveBtn = widget.NewButtonWithIcon("Save", theme.DocumentSaveIcon(), func() {
+	e.saveBtn = widget.NewButtonWithIcon("", theme.DocumentSaveIcon(), func() {
 		if e.editHandler != nil {
 			e.editHandler.OnSave()
 		}

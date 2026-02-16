@@ -155,6 +155,13 @@ func (m *MainUI) EndSaving() {
 	m.noteEditor.EndSaving()
 }
 
+// ExitMinimizedMode exits minimized mode and restores normal window state
+func (m *MainUI) ExitMinimizedMode() {
+	m.ToggleMinimizedMode(false)
+	m.SetPinned(false)
+	m.window.Resize(fyne.NewSize(1000, 800))
+}
+
 // ToggleMinimizedMode toggles between normal and minimized (notepad) mode
 func (m *MainUI) ToggleMinimizedMode(minimized bool) {
 	m.minimized = minimized
@@ -164,17 +171,15 @@ func (m *MainUI) ToggleMinimizedMode(minimized bool) {
 		SetWindowOnTopByTitle(m.window.Title(), true)
 
 		// Create minimal container with title, content, and buttons
-		saveBtn := widget.NewButtonWithIcon("Save", theme.DocumentSaveIcon(), func() {
+		saveBtn := widget.NewButtonWithIcon("", theme.DocumentSaveIcon(), func() {
 			if m.app != nil {
 				m.app.OnSave()
 			}
 		})
 		saveBtn.Importance = widget.HighImportance
 
-		exitBtn := widget.NewButton("Exit Minimized Mode", func() {
-			m.ToggleMinimizedMode(false)
-			m.SetPinned(false)
-			m.window.Resize(fyne.NewSize(1000, 800))
+		exitBtn := widget.NewButton("Exit", func() {
+			m.ExitMinimizedMode()
 		})
 		exitBtn.Importance = widget.MediumImportance
 
