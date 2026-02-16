@@ -6,6 +6,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/curtisnewbie/miso/flow"
 	"github.com/curtisnewbie/nota/internal/domain"
@@ -162,7 +163,14 @@ func (m *MainUI) ToggleMinimizedMode(minimized bool) {
 		// Keep window on top in minimized mode
 		SetWindowOnTopByTitle(m.window.Title(), true)
 
-		// Create minimal container with title, content, and exit button
+		// Create minimal container with title, content, and buttons
+		saveBtn := widget.NewButtonWithIcon("Save", theme.DocumentSaveIcon(), func() {
+			if m.app != nil {
+				m.app.OnSave()
+			}
+		})
+		saveBtn.Importance = widget.HighImportance
+
 		exitBtn := widget.NewButton("Exit Minimized Mode", func() {
 			m.ToggleMinimizedMode(false)
 			m.SetPinned(false)
@@ -170,22 +178,45 @@ func (m *MainUI) ToggleMinimizedMode(minimized bool) {
 		})
 		exitBtn.Importance = widget.MediumImportance
 
+		// Create button row with save and exit buttons
+		buttonRow := container.NewHBox(saveBtn, exitBtn)
+
+		// Create status label for minimized mode
+		statusLabel := widget.NewLabel("")
+		statusLabel.TextStyle = fyne.TextStyle{Bold: true}
+		m.noteEditor.SetMinimizedStatusLabel(statusLabel)
+
+		// Create row with buttons and status
+		topRow := container.NewBorder(nil, nil, nil, statusLabel, buttonRow)
+
 		// Create fresh widget instances for minimized mode to avoid state conflicts
 		titleEntry := widget.NewEntry()
 		titleEntry.SetText(m.noteEditor.GetTitle())
 		titleEntry.PlaceHolder = "Note Title"
+		// Add OnChanged callback to trigger status updates (same as normal mode)
+		titleEntry.OnChanged = func(string) {
+			if m.app != nil && !m.noteEditor.IsSaving() {
+				m.app.OnContentChanged()
+			}
+		}
 
 		contentEntry := widget.NewMultiLineEntry()
 		contentEntry.SetText(m.noteEditor.GetContent())
 		contentEntry.SetPlaceHolder("Note Content")
 		contentEntry.Wrapping = fyne.TextWrapWord
 		contentEntry.SetMinRowsVisible(20)
+		// Add OnChanged callback to trigger status updates (same as normal mode)
+		contentEntry.OnChanged = func(string) {
+			if m.app != nil && !m.noteEditor.IsSaving() {
+				m.app.OnContentChanged()
+			}
+		}
 
 		// Track the widgets so we can sync changes back when exiting
 		m.noteEditor.SetMinimizedWidgets(titleEntry, contentEntry)
 
 		minimalContainer := container.NewVBox(
-			exitBtn,
+			topRow,
 			titleEntry,
 			widget.NewSeparator(),
 			contentEntry,
@@ -194,6 +225,8 @@ func (m *MainUI) ToggleMinimizedMode(minimized bool) {
 	} else {
 		// Sync changes from minimized mode widgets back to note editor
 		m.noteEditor.SyncFromMinimizedMode()
+		// Clear minimized status label reference
+		m.noteEditor.SetMinimizedStatusLabel(nil)
 		// Restore full container
 		m.container = m.fullContainer
 		// Disable "stay on top" when exiting minimized mode

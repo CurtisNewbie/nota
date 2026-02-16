@@ -28,6 +28,7 @@ type NoteEditor struct {
 	container             *fyne.Container
 	minimizedTitleEntry   *widget.Entry
 	minimizedContentEntry *widget.Entry
+	minimizedStatusLabel *widget.Label
 }
 
 // NewNoteEditor creates a new note editor
@@ -143,12 +144,32 @@ func (e *NoteEditor) GetContent() string {
 func (e *NoteEditor) MarkAsSaved() {
 	e.statusLabel.SetText("Saved")
 	e.statusLabel.Importance = widget.LowImportance
+	// Update minimized status label if it exists
+	if e.minimizedStatusLabel != nil {
+		e.minimizedStatusLabel.SetText("Saved")
+		e.minimizedStatusLabel.Importance = widget.LowImportance
+	}
 }
 
 // MarkAsUnsaved marks the note as unsaved
 func (e *NoteEditor) MarkAsUnsaved() {
 	e.statusLabel.SetText("Unsaved changes")
 	e.statusLabel.Importance = widget.HighImportance
+	// Update minimized status label if it exists
+	if e.minimizedStatusLabel != nil {
+		e.minimizedStatusLabel.SetText("Unsaved changes")
+		e.minimizedStatusLabel.Importance = widget.HighImportance
+	}
+}
+
+// SetMinimizedStatusLabel sets the status label for minimized mode
+func (e *NoteEditor) SetMinimizedStatusLabel(statusLabel *widget.Label) {
+	e.minimizedStatusLabel = statusLabel
+	// Initialize with current status
+	if e.minimizedStatusLabel != nil && e.statusLabel != nil {
+		e.minimizedStatusLabel.SetText(e.statusLabel.Text)
+		e.minimizedStatusLabel.Importance = e.statusLabel.Importance
+	}
 }
 
 // StartSaving marks the start of a save operation
@@ -159,6 +180,11 @@ func (e *NoteEditor) StartSaving() {
 // EndSaving marks the end of a save operation
 func (e *NoteEditor) EndSaving() {
 	e.isSaving = false
+}
+
+// IsSaving returns whether a save operation is in progress
+func (e *NoteEditor) IsSaving() bool {
+	return e.isSaving
 }
 
 // ShowEmptyState shows the empty state
