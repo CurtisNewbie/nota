@@ -18,6 +18,7 @@ type ImportExportService interface {
 	ExportNotes(rail flow.Rail, notes []*domain.Note, dir string) error
 	ImportNote(rail flow.Rail, path string, onDuplicate func(note *domain.Note) bool) (*domain.Note, error)
 	ImportNotes(rail flow.Rail, dir string, onDuplicate func(note *domain.Note) bool) ([]*domain.Note, error)
+	ImportNotesFromFile(rail flow.Rail, path string, onDuplicate func(note *domain.Note) bool) ([]*domain.Note, error)
 }
 
 // ImportExportServiceImpl implements ImportExportService
@@ -199,6 +200,91 @@ func (s *ImportExportServiceImpl) ImportNotes(rail flow.Rail, dir string, onDupl
 
 	if len(importedNotes) == 0 {
 		return nil, fmt.Errorf("no valid notes found to import")
+	}
+
+	return importedNotes, nil
+}
+
+// ImportNotesFromFile imports notes from a batch export JSON file
+func (s *ImportExportServiceImpl) ImportNotesFromFile(rail flow.Rail, path string, onDuplicate func(note *domain.Note) bool) ([]*domain.Note, error) {
+	if path == "" {
+		return nil, fmt.Errorf("file path cannot be empty")
+	}
+
+	rail.Infof("Importing notes from batch export file: %s", path)
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		rail.Errorf("Failed to read export file: %v", err)
+		return nil, fmt.Errorf("failed to read file: %w", err)
+	}
+
+	// Parse batch export structure
+	type ExportData struct {
+		Version int               `json:"version"`
+		Notes   []domain.NoteJSON `json:"notes"`
+		Count   int               `json:"count"`
+	}
+
+	var exportData ExportData
+	err = json.Unmarshal(data, &exportData)
+	if err != nil {
+		rail.Errorf("Failed to unmarshal export file: %v", err)
+		return nil, fmt.Errorf("failed to parse export file: %w", err)
+	}
+
+	if exportData.Version != 1 {
+		rail.Warnf("Unsupported export version: %d", exportData.Version)
+		return nil, fmt.Errorf("unsupported export version: %d", exportData.Version)
+	}
+
+	if len(exportData.Notes) == 0 {
+		rail.Warnf("No notes found in export file")
+		return nil, fmt.Errorf("no notes found in export file")
+	}
+
+	var importedNotes []*domain.Note
+	successCount := 0
+	skippedCount := 0
+
+	for _, noteJSON := range exportData.Notes {
+		note, err := domain.FromJSON(noteJSON)
+		if err != nil {
+			rail.Warnf("Failed to convert note JSON: %v", err)
+			continue
+		}
+
+		existing, err := s.noteRepo.FindByID(rail, note.ID)
+		if err == nil {
+			// Note exists, check if we should overwrite
+			if onDuplicate != nil && onDuplicate(existing) {
+				err = s.noteRepo.Save(rail, note)
+				if err != nil {
+					rail.Warnf("Failed to overwrite note %s: %v", note.ID, err)
+					continue
+				}
+				importedNotes = append(importedNotes, note)
+				successCount++
+			} else {
+				rail.Infof("Skipped duplicate note: %s", note.ID)
+				skippedCount++
+			}
+		} else {
+			// New note, save it
+			err = s.noteRepo.Save(rail, note)
+			if err != nil {
+				rail.Warnf("Failed to save note %s: %v", note.ID, err)
+				continue
+			}
+			importedNotes = append(importedNotes, note)
+			successCount++
+		}
+	}
+
+	rail.Infof("Successfully imported %d notes, skipped %d from: %s", successCount, skippedCount, path)
+
+	if len(importedNotes) == 0 {
+		return nil, fmt.Errorf("no notes were imported")
 	}
 
 	return importedNotes, nil

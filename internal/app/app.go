@@ -314,7 +314,7 @@ func (a *App) onDeleteNote() {
 	)
 }
 
-// onImportNote is called when user wants to import a note
+// onImportNote is called when user wants to import notes
 func (a *App) onImportNote() {
 	fd := dialog.NewFileOpen(func(reader fyne.URIReadCloser, err error) {
 		if err != nil || reader == nil {
@@ -324,11 +324,11 @@ func (a *App) onImportNote() {
 
 		path := reader.URI().Path()
 
-		dialog.ShowConfirm("Duplicate Note",
-			"If a note with the same ID exists, do you want to overwrite it?",
+		dialog.ShowConfirm("Duplicate Notes",
+			"If notes with the same ID exist, do you want to overwrite them?",
 			func(overwrite bool) {
 				rail := flow.EmptyRail()
-				_, err := a.importExportService.ImportNote(rail, path, func(note *domain.Note) bool {
+				notes, err := a.importExportService.ImportNotesFromFile(rail, path, func(note *domain.Note) bool {
 					return overwrite
 				})
 				if err != nil {
@@ -337,7 +337,7 @@ func (a *App) onImportNote() {
 				}
 
 				a.mainUI.RefreshNoteList()
-				dialog.ShowInformation("Import Successful", "Note imported successfully", a.window)
+				dialog.ShowInformation("Import Successful", fmt.Sprintf("Successfully imported %d notes", len(notes)), a.window)
 			},
 			a.window,
 		)
