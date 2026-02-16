@@ -13,6 +13,7 @@ import (
 // NoteEditor represents the note editor panel
 type NoteEditor struct {
 	editHandler           NoteEditHandler
+	deleteHandler         DeleteHandler
 	note                  *domain.Note
 	isSaving              bool
 	minimalMode           bool
@@ -22,6 +23,7 @@ type NoteEditor struct {
 	updatedLabel          *widget.Label
 	statusLabel           *widget.Label
 	saveBtn               *widget.Button
+	deleteBtn             *widget.Button
 	topBar                *fyne.Container
 	bottomBar             *fyne.Container
 	leftPanel             *fyne.Container
@@ -76,7 +78,17 @@ func (e *NoteEditor) Build() *fyne.Container {
 		}
 	})
 
-	e.topBar = container.NewBorder(nil, nil, nil, e.saveBtn)
+	e.deleteBtn = widget.NewButtonWithIcon("", theme.DeleteIcon(), func() {
+		if e.deleteHandler != nil {
+			e.deleteHandler.OnDeleteNote()
+		}
+	})
+	e.deleteBtn.Importance = widget.DangerImportance
+
+	// Create button row with save and delete buttons
+	buttonRow := container.NewHBox(e.saveBtn, e.deleteBtn)
+
+	e.topBar = container.NewBorder(nil, nil, nil, buttonRow)
 
 	e.bottomBar = container.NewVBox(
 		widget.NewSeparator(),
@@ -185,6 +197,11 @@ func (e *NoteEditor) EndSaving() {
 // IsSaving returns whether a save operation is in progress
 func (e *NoteEditor) IsSaving() bool {
 	return e.isSaving
+}
+
+// SetDeleteHandler sets the delete handler for the note editor
+func (e *NoteEditor) SetDeleteHandler(handler DeleteHandler) {
+	e.deleteHandler = handler
 }
 
 // ShowEmptyState shows the empty state

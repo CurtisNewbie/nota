@@ -105,7 +105,7 @@ func (a *App) Run() {
 
 // onClose handles window close event
 func (a *App) onClose() {
-	if a.hasUnsavedChanges {
+	if a.hasUnsavedChanges && !a.isNoteEmpty() {
 		dialog.ShowConfirm("Unsaved Changes",
 			"You have unsaved changes. Do you want to save them before closing?",
 			func(save bool) {
@@ -134,6 +134,14 @@ func (a *App) loadLastNote() error {
 	a.mainUI.DisplayNote(note)
 	a.mainUI.MarkAsSaved()
 	return nil
+}
+
+// isNoteEmpty checks if the current note is a new, empty note (no content)
+func (a *App) isNoteEmpty() bool {
+	return a.currentNote != nil &&
+		a.currentNote.ID == "" &&
+		a.mainUI.GetTitle() == "" &&
+		a.mainUI.GetContent() == ""
 }
 
 // saveCurrentNote saves the current note
@@ -185,7 +193,7 @@ func (a *App) saveCurrentNote() {
 
 // onNoteSelected is called when a note is selected from the list
 func (a *App) onNoteSelected(note *domain.Note) {
-	if a.hasUnsavedChanges {
+	if a.hasUnsavedChanges && !a.isNoteEmpty() {
 		dialog.ShowConfirm("Unsaved Changes",
 			"You have unsaved changes. Do you want to save them before switching?",
 			func(save bool) {
@@ -233,7 +241,7 @@ func (a *App) onContentChanged() {
 
 // onCreateNote is called when user wants to create a new note
 func (a *App) onCreateNote() {
-	if a.hasUnsavedChanges {
+	if a.hasUnsavedChanges && !a.isNoteEmpty() {
 		dialog.ShowConfirm("Unsaved Changes",
 			"You have unsaved changes. Do you want to save them before creating a new note?",
 			func(save bool) {

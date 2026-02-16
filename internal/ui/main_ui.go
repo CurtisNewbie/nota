@@ -51,6 +51,7 @@ func NewMainUI(
 	mainUI.menuBar = NewMenuBar(app, app, app.GetDatabaseLocation())
 	mainUI.menuBar.SetWindow(window)
 	mainUI.noteEditor = NewNoteEditor(app)
+	mainUI.noteEditor.SetDeleteHandler(app)
 	mainUI.noteList = NewNoteList(app, app)
 	mainUI.noteList.SetWindow(window)
 	mainUI.noteList.SetDeleteHandler(app)

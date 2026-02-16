@@ -56,19 +56,12 @@ func (n *NoteList) Build() *fyne.Container {
 		}
 	}
 
-	// Add delete button
-	deleteBtn := widget.NewButton("Delete", func() {
-		n.onDeleteRequested()
-	})
-	deleteBtn.Importance = widget.DangerImportance
-
-	// Create toolbar with search and delete
-	// Put search entry in center (expandable) and delete button on right edge
+	// Create toolbar with search only
 	toolbar := container.NewBorder(
 		nil,
 		nil,
 		nil,
-		deleteBtn,
+		nil,
 		n.searchEntry,
 	)
 
